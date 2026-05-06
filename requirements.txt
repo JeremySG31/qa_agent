@@ -1,0 +1,14 @@
+# Dependencias del Agente QA
+
+# Automatización web
+selenium>=4.15.0
+webdriver-manager>=4.0.1
+
+# Dashboard
+streamlit>=1.30.0
+
+# LLM (opcional – solo si usas Gemini)
+# google-generativeai>=0.4.0
+
+# Utilidades
+python-dotenv>=1.0.0
