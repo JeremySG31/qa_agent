@@ -12,3 +12,8 @@ streamlit>=1.30.0
 
 # Utilidades
 python-dotenv>=1.0.0
+
+# Automatización desktop
+pyautogui>=0.9.54
+opencv-python>=4.8.0
+

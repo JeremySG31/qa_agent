@@ -75,17 +75,17 @@ def main():
     headless = not args.no_headless
 
     print("=" * 70)
-    print("🤖  AGENTE QA – AUTOMATIZACIÓN LOCAL CON IA")
+    print("AGENTE QA - AUTOMATIZACION LOCAL CON IA")
     print("=" * 70)
-    print(f"📝 Prompt: {prompt}")
-    print(f"🏷️  Tipo: {test_type}")
-    print(f"⚙️  Modo: {'headless' if headless else 'visible'}")
+    print(f"Prompt: {prompt}")
+    print(f"Tipo: {test_type}")
+    print(f"Modo: {'headless' if headless else 'visible'}")
     print("-" * 70)
 
     # 1️⃣  Generar plan de prueba desde el prompt
-    print("\n🧠 Generando plan de prueba...")
+    print("\nGenerando plan de prueba...")
     steps = generate_test_plan(prompt)
-    print(f"✅ Plan generado ({len(steps)} pasos):")
+    print(f"Plan generado ({len(steps)} pasos):")
     for i, step in enumerate(steps, 1):
         action = step.get("action", "")
         detail = step.get("value") or step.get("selector", "")
@@ -95,28 +95,28 @@ def main():
 
     # 2️⃣  Ejecutar la prueba con el executor apropiado
     test_name = f"Test: {prompt[:50]}"
-    print(f"\n🚀 Ejecutando {test_type} automation...")
+    print(f"\nEjecutando {test_type} automation...")
     result = run_test(test_name, steps, test_type=test_type, headless=headless)
 
     print("\n" + "-" * 70)
     
     # Mostrar resultado
     status_icon = {
-        "PASS": "✅ PASS",
-        "FAIL": "❌ FAIL",
-        "SKIPPED": "⏭️  SKIPPED",
-    }.get(result["status"], "❓ UNKNOWN")
+        "PASS": "PASS",
+        "FAIL": "FAIL",
+        "SKIPPED": "SKIPPED",
+    }.get(result["status"], "UNKNOWN")
 
-    print(f"\n{status_icon}  –  {result['test_name']}")
+    print(f"\n{status_icon} - {result['test_name']}")
     if result["error"]:
-        print(f"📌 Error: {result['error']}")
+        print(f"Error: {result['error']}")
 
     # 3️⃣  Guardar resultados
     filepath = save_result(result)
 
     print("\n" + "=" * 70)
-    print(f"💾 Resultado guardado: {filepath}")
-    print("📊 Ver dashboard: streamlit run dashboard/app.py")
+    print(f"Resultado guardado: {filepath}")
+    print("Ver dashboard: streamlit run dashboard/app.py")
     print("=" * 70)
 
 

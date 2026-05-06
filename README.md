@@ -144,8 +144,9 @@ python main.py "navega a example.com" --type web --no-headless
 | Tipo | Descripción | Estado |
 |------|---|---|
 | `web` | Automatización web con Selenium | ✅ Activo |
-| `desktop` | Desktop automation (PyAutoGUI, UIA) | ⏳ Placeholder |
-| `mobile` | Mobile testing (Appium) | ⏳ Placeholder |
+| `desktop` | Desktop automation con PyAutoGUI | ✅ Activo |
+| `mobile` | Mobile testing con ADB (Android) | ✅ Activo |
+
 
 **Ejemplo**: `python main.py "abre notepad" --type desktop`
 

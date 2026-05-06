@@ -5,8 +5,15 @@ Guarda y carga los resultados de las pruebas en formato JSON.
 
 import json
 import os
+import sys
+import io
 from datetime import datetime
 from pathlib import Path
+
+# Forzar stdout a UTF-8 para evitar errores de codificacion en Windows
+if sys.stdout and hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 
 # Directorio donde se guardan los reportes
 RESULTS_DIR = Path(__file__).parent.parent / "results"
@@ -41,7 +48,7 @@ def save_result(result: dict) -> str:
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
-    print(f"💾 Resultado guardado: {filepath}")
+    print(f"Resultado guardado: {filepath}")
     return str(filepath)
 
 
