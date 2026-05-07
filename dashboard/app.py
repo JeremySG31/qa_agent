@@ -15,7 +15,6 @@ sys.path.insert(0, str(ROOT))
 
 from agent.reporter import load_all_results, clear_results, save_result
 from agent.planner  import generate_test_plan
-from auth.google_auth import get_google_auth_url, exchange_code_for_tokens, get_user_info
 
 # ── Cargar .env ────────────────────────────────────────────────────────────────
 try:
@@ -305,51 +304,8 @@ def firebase_load_settings(email):
         return data.get("fields", {}).get("gemini_api_key", {}).get("stringValue", "")
     return ""
 
-# ── Manejo de Token de Google en la URL ───────────────────────────────────────
-if "google_id_token" in st.query_params:
-    token = st.query_params.get("google_id_token")
-    with st.spinner("Autenticando con Google..."):
-        res = firebase_google_login(token)
-        if "idToken" in res:
-            email = res.get("email")
-            st.session_state.user_logged_in = True
-            st.session_state.user_email = email
-            st.session_state.firebase_id_token = res.get("idToken", "")
-            # CARGAR CONFIGURACIÓN DESDE FIRESTORE
-            st.session_state.gemini_api_key = firebase_load_settings(email)
-            # Limpiar la URL y recargar
-            st.query_params.clear()
-            st.rerun()
-        else:
-            raw_error = res.get("error", {}).get("message", "Error desconocido")
-            st.error(firebase_error_message(raw_error))
-
-if "auth_error" in st.query_params:
-    raw_error = st.query_params.get("auth_error")
-    st.error(f"Google Login no pudo abrirse: {raw_error}. Revisa que {FIREBASE_REQUEST_URI} este en Authorized JavaScript origins de Google Cloud Console.")
-    st.query_params.clear()
-
-# ── Manejo de Código OAuth (Nuevo Flujo Seguro) ───────────────────────────────
-if "code" in st.query_params:
-    auth_code = st.query_params.get("code")
-    with st.spinner("Finalizando autenticación con Google..."):
-        tokens = exchange_code_for_tokens(auth_code)
-        if tokens and tokens.get("id_token"):
-            # Ahora usamos el id_token para entrar en Firebase
-            res = firebase_google_login(tokens["id_token"])
-            if "idToken" in res:
-                email = res.get("email")
-                st.session_state.user_logged_in = True
-                st.session_state.user_email = email
-                st.session_state.firebase_id_token = res.get("idToken", "")
-                st.session_state.gemini_api_key = firebase_load_settings(email)
-                st.query_params.clear()
-                st.rerun()
-            else:
-                st.error("Error al vincular Google con Firebase.")
-        else:
-            st.error("No se pudo obtener el token de Google. Revisa las credenciales en .env")
-    st.query_params.clear()
+# ── Manejo de Código OAuth (ELIMINADO) ─────────────────────────────────────────
+# Se elimina por restricciones de Streamlit Cloud e iframe.
 
 # ── Pantalla de Login ─────────────────────────────────────────────────────────
 if not st.session_state.user_logged_in:
@@ -409,63 +365,17 @@ if not st.session_state.user_logged_in:
                 else:
                     st.warning("Completa todos los campos.")
                 
-        st.markdown("<div style='text-align:center; color:#64748b; font-size:0.85rem; letter-spacing:1px; margin-top:10px; margin-bottom:10px;'>O CONTINÚA CON</div>", unsafe_allow_html=True)
-        
-        # Inyectar el botón oficial de Google usando HTML/JS
-        if not GOOGLE_CLIENT_ID:
-            st.warning("Falta GOOGLE_CLIENT_ID en .env para activar Google Login.")
-        elif not FIREBASE_API_KEY:
-            st.warning("Falta FIREBASE_API_KEY en .env para completar Google Login con Firebase.")
-        else:
-            st.caption("Autenticación con Google habilitada y protegida por Firebase. Contacta al administrador si tienes problemas de acceso.")
-        
-        if GOOGLE_CLIENT_ID:
-            # Componente de Google Login en modo POPUP
-            html_popup = f"""
-            <div id="g_id_onload"
-                 data-client_id="{GOOGLE_CLIENT_ID}"
-                 data-context="signin"
-                 data-ux_mode="popup"
-                 data-callback="onSignIn"
-                 data-auto_prompt="false">
-            </div>
-            <div style="display: flex; justify-content: center;">
-                <div class="g_id_signin"
-                     data-type="standard"
-                     data-shape="rectangular"
-                     data-theme="outline"
-                     data-text="signin_with"
-                     data-size="large"
-                     data-logo_alignment="left">
-                </div>
-            </div>
-            <script src="https://accounts.google.com/gsi/client" async defer></script>
-            <script>
-                function onSignIn(response) {{
-                    const token = response.credential;
-                    // Enviamos el token a la URL de Streamlit para que lo procese el backend
-                    const url = new URL(window.location.href);
-                    url.searchParams.set("google_id_token", token);
-                    window.parent.location.href = url.toString();
-                }}
-            </script>
-            """
-            import streamlit.components.v1 as components
-            components.html(html_popup, height=50)
-            
-            # También mantenemos el manejo del token recibido
-            if "google_id_token" in st.query_params:
-                token = st.query_params.get("google_id_token")
-                with st.spinner("Autenticando..."):
-                    res = firebase_google_login(token)
-                    if "idToken" in res:
-                        st.session_state.user_logged_in = True
-                        st.session_state.user_email = res.get("email")
-                        st.session_state.firebase_id_token = res.get("idToken")
-                        st.query_params.clear()
-                        st.rerun()
-                    else:
-                        st.error("Error al validar con Firebase.")
+        # ── Botón de Invitado (Acceso Rápido) ──────────────────────────────────
+        st.markdown("<div style='margin-top:20px; margin-bottom:10px; border-top:1px solid #1e293b; padding-top:20px;'></div>", unsafe_allow_html=True)
+        if st.button("🚀 Probar como Invitado (Sin registro)", use_container_width=True):
+            st.session_state.user_logged_in = True
+            st.session_state.user_email = "invitado@qa-agent.local"
+            st.session_state.is_guest = True
+            st.session_state.gemini_api_key = "" # No tiene API Key guardada
+            st.rerun()
+
+        st.markdown("<div style='text-align:center; color:#64748b; font-size:0.85rem; letter-spacing:1px; margin-top:20px; margin-bottom:20px;'>PROTEGIDO POR FIREBASE</div>", unsafe_allow_html=True)
+        st.caption("Usa tu correo y contraseña para acceder a tus reportes guardados en la nube.")
             
     st.stop()
     
