@@ -51,7 +51,7 @@ def get_google_auth_url() -> str:
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": REDIRECT_URI,
         "response_type": "code",
-        "scope": "email profile",  # Simplificado para evitar bloqueos
+        "scope": "openid email profile",  # OpenID es necesario para el id_token
         "access_type": "offline",
         "prompt": "select_account",  # Cambiado de consent a select_account
     }
