@@ -196,6 +196,10 @@ if "active_tab" not in st.session_state:
     st.session_state.active_tab = 0
 if "user_logged_in" not in st.session_state:
     st.session_state.user_logged_in = False
+if "gemini_enabled" not in st.session_state:
+    st.session_state.gemini_enabled = False
+if "key_version" not in st.session_state:
+    st.session_state.key_version = 0
 if "gemini_api_key" not in st.session_state:
     st.session_state.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
 
@@ -226,14 +230,40 @@ def firebase_google_login(id_token):
     res = requests.post(url, json=payload)
     return res.json()
 
+def firebase_save_settings(email, gemini_key):
+    import requests
+    # Sanitizar email para el ID del documento
+    doc_id = email.replace("@", "_at_").replace(".", "_dot_")
+    url = f"https://firestore.googleapis.com/v1/projects/qa-agent-web/databases/(default)/documents/users/{doc_id}?updateMask.fieldPaths=gemini_api_key&key={FIREBASE_API_KEY}"
+    payload = {
+        "fields": {
+            "gemini_api_key": {"stringValue": gemini_key}
+        }
+    }
+    # Usar patch para crear o actualizar el documento
+    requests.patch(url, json=payload)
+
+def firebase_load_settings(email):
+    import requests
+    doc_id = email.replace("@", "_at_").replace(".", "_dot_")
+    url = f"https://firestore.googleapis.com/v1/projects/qa-agent-web/databases/(default)/documents/users/{doc_id}?key={FIREBASE_API_KEY}"
+    res = requests.get(url)
+    if res.status_code == 200:
+        data = res.json()
+        return data.get("fields", {}).get("gemini_api_key", {}).get("stringValue", "")
+    return ""
+
 # ── Manejo de Token de Google en la URL ───────────────────────────────────────
 if "google_id_token" in st.query_params:
     token = st.query_params.get("google_id_token")
     with st.spinner("Autenticando con Google..."):
         res = firebase_google_login(token)
         if "idToken" in res:
+            email = res.get("email")
             st.session_state.user_logged_in = True
-            st.session_state.user_email = res.get("email")
+            st.session_state.user_email = email
+            # CARGAR CONFIGURACIÓN DESDE FIRESTORE
+            st.session_state.gemini_api_key = firebase_load_settings(email)
             # Limpiar la URL y recargar
             st.query_params.clear()
             st.rerun()
@@ -265,10 +295,20 @@ if not st.session_state.user_logged_in:
                         if "idToken" in res:
                             st.session_state.user_logged_in = True
                             st.session_state.user_email = res.get("email")
+                            # CARGAR CONFIGURACIÓN DESDE FIRESTORE
+                            st.session_state.gemini_api_key = firebase_load_settings(res.get("email"))
                             st.rerun()
                         else:
-                            error_msg = res.get("error", {}).get("message", "Error desconocido")
-                            st.error(f"Error de Login: {error_msg}")
+                            raw_error = res.get("error", {}).get("message", "Error desconocido")
+                            error_map = {
+                                "INVALID_LOGIN_CREDENTIALS": "Credenciales incorrectas. Revisa tu correo y contraseña.",
+                                "EMAIL_NOT_FOUND": "El correo electrónico no está registrado.",
+                                "INVALID_PASSWORD": "La contraseña es incorrecta.",
+                                "USER_DISABLED": "Esta cuenta ha sido deshabilitada.",
+                                "TOO_MANY_ATTEMPTS_TRY_LATER": "Demasiados intentos. Intenta más tarde."
+                            }
+                            friendly_error = error_map.get(raw_error, f"Error de Login: {raw_error}")
+                            st.error(friendly_error)
                 else:
                     st.warning("Completa los campos")
                 
@@ -283,10 +323,18 @@ if not st.session_state.user_logged_in:
                         if "idToken" in res:
                             st.session_state.user_logged_in = True
                             st.session_state.user_email = res.get("email")
+                            # CARGAR CONFIGURACIÓN DESDE FIRESTORE (estará vacío pero inicializa)
+                            st.session_state.gemini_api_key = ""
                             st.rerun()
                         else:
-                            error_msg = res.get("error", {}).get("message", "Error desconocido")
-                            st.error(f"Error al registrar: {error_msg}")
+                            raw_error = res.get("error", {}).get("message", "Error desconocido")
+                            error_map = {
+                                "EMAIL_EXISTS": "Este correo ya está registrado.",
+                                "OPERATION_NOT_ALLOWED": "El registro por correo no está habilitado en Firebase.",
+                                "TOO_MANY_ATTEMPTS_TRY_LATER": "Demasiados intentos. Intenta más tarde."
+                            }
+                            friendly_error = error_map.get(raw_error, f"Error al registrar: {raw_error}")
+                            st.error(friendly_error)
                 elif r_pass != r_pass2:
                     st.warning("Las contraseñas no coinciden.")
                 else:
@@ -443,12 +491,31 @@ with st.sidebar:
     with st.expander("Configuracion de IA", expanded=False):
         st.toggle("Activar Inteligencia Artificial", value=False, key="gemini_enabled", help="Apágalo para no consumir la cuota de tu API.")
 
+        input_key = f"temp_api_key_{st.session_state.key_version}"
         api_key_input = st.text_input(
             "Gemini API Key",
             value=st.session_state.gemini_api_key,
             type="password",
             help="Opcional. Sin key usa modo básico.",
+            key=input_key
         )
+        if st.button("💾 Guardar Configuración", use_container_width=True):
+            st.session_state.gemini_api_key = api_key_input
+            firebase_save_settings(st.session_state.user_email, api_key_input)
+            msg_h = st.empty()
+            msg_h.success("¡Configuración guardada!")
+            import time
+            time.sleep(2)
+            msg_h.empty()
+        
+        if st.button("🗑️ Eliminar Key", use_container_width=True):
+            st.session_state.gemini_api_key = ""
+            st.session_state.key_version += 1 # Forzar a Streamlit a recrear el widget (limpiarlo)
+            firebase_save_settings(st.session_state.user_email, "")
+            st.warning("Key eliminada de la base de datos.")
+            import time
+            time.sleep(1.5)
+            st.rerun()
         if api_key_input != st.session_state.gemini_api_key:
             st.session_state.gemini_api_key = api_key_input
             st.rerun()
