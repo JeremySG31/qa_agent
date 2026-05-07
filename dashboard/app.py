@@ -153,6 +153,36 @@ hr { border-color:#1e293b !important; }
 .stTabs [data-baseweb="tab"] { border-radius:7px; color:#64748b; }
 .stTabs [aria-selected="true"] { background:#1e293b; color:#22d3ee; }
 .error-box { background:#1a0a0a; border:1px solid #7f1d1d; border-radius:8px; padding:12px 16px; font-family:'JetBrains Mono',monospace; font-size:.8rem; color:#fca5a5; margin-top:8px; }
+
+/* Login Page CSS */
+.login-container {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 80vh; text-align: center;
+}
+.login-box {
+  background: linear-gradient(145deg, #1e293b, #0a0c10);
+  border: 1px solid #38bdf840; border-top: 1px solid #38bdf880;
+  border-radius: 20px; padding: 40px 50px;
+  box-shadow: 0 10px 40px -10px rgba(56, 189, 248, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+  max-width: 450px; width: 100%;
+}
+.login-logo {
+  font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800;
+  background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0px 4px 10px rgba(56,189,248,0.3)); margin-bottom: 10px;
+}
+.login-subtitle { color: #94a3b8; font-size: 1rem; margin-bottom: 30px; }
+.google-btn {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  background: #ffffff; color: #1e293b !important; text-decoration: none;
+  font-weight: 700; font-size: 1.05rem; padding: 12px 24px; border-radius: 10px;
+  transition: all 0.3s ease; border: none; cursor: pointer; width: 100%;
+}
+.google-btn:hover {
+  transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,255,255,0.2);
+}
+.google-icon { width: 24px; height: 24px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -164,9 +194,158 @@ if "custom_steps" not in st.session_state:
     st.session_state.custom_steps = []
 if "active_tab" not in st.session_state:
     st.session_state.active_tab = 0
+if "user_logged_in" not in st.session_state:
+    st.session_state.user_logged_in = False
 if "gemini_api_key" not in st.session_state:
     st.session_state.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
 
+# ── Configuración de Firebase ──────────────────────────────────────────────────
+FIREBASE_API_KEY = "AIzaSyCa3VrUGt-IpwUHlTvNvTBaNfMGMF-VoLE"
+
+def firebase_login(email, password):
+    import requests
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+    res = requests.post(url, json={"email": email, "password": password, "returnSecureToken": True})
+    return res.json()
+
+def firebase_register(email, password):
+    import requests
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_API_KEY}"
+    res = requests.post(url, json={"email": email, "password": password, "returnSecureToken": True})
+    return res.json()
+
+def firebase_google_login(id_token):
+    import requests
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={FIREBASE_API_KEY}"
+    payload = {
+        "postBody": f"id_token={id_token}&providerId=google.com",
+        "requestUri": "http://localhost:8501",
+        "returnIdpCredential": True,
+        "returnSecureToken": True
+    }
+    res = requests.post(url, json=payload)
+    return res.json()
+
+# ── Manejo de Token de Google en la URL ───────────────────────────────────────
+if "google_id_token" in st.query_params:
+    token = st.query_params.get("google_id_token")
+    with st.spinner("Autenticando con Google..."):
+        res = firebase_google_login(token)
+        if "idToken" in res:
+            st.session_state.user_logged_in = True
+            st.session_state.user_email = res.get("email")
+            # Limpiar la URL y recargar
+            st.query_params.clear()
+            st.rerun()
+        else:
+            st.error("Error al autenticar con Google")
+
+# ── Pantalla de Login ─────────────────────────────────────────────────────────
+if not st.session_state.user_logged_in:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    _, col_login, _ = st.columns([1, 1.2, 1])
+    
+    with col_login:
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div class="login-logo" style="font-size: 3.5rem;">QA Agent</div>
+            <div class="login-subtitle">Acceso a la plataforma No-Code</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        tab_login, tab_register = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse"])
+        
+        with tab_login:
+            l_email = st.text_input("Correo electrónico", key="l_email")
+            l_pass = st.text_input("Contraseña", type="password", key="l_pass")
+            if st.button("Ingresar", use_container_width=True, type="primary"):
+                if l_email and l_pass:
+                    with st.spinner("Autenticando..."):
+                        res = firebase_login(l_email, l_pass)
+                        if "idToken" in res:
+                            st.session_state.user_logged_in = True
+                            st.session_state.user_email = res.get("email")
+                            st.rerun()
+                        else:
+                            error_msg = res.get("error", {}).get("message", "Error desconocido")
+                            st.error(f"Error de Login: {error_msg}")
+                else:
+                    st.warning("Completa los campos")
+                
+        with tab_register:
+            r_email = st.text_input("Correo electrónico", key="r_email")
+            r_pass = st.text_input("Contraseña", type="password", key="r_pass")
+            r_pass2 = st.text_input("Repetir contraseña", type="password", key="r_pass2")
+            if st.button("Crear cuenta", use_container_width=True):
+                if r_email and r_pass and r_pass == r_pass2:
+                    with st.spinner("Creando cuenta en Firebase..."):
+                        res = firebase_register(r_email, r_pass)
+                        if "idToken" in res:
+                            st.session_state.user_logged_in = True
+                            st.session_state.user_email = res.get("email")
+                            st.rerun()
+                        else:
+                            error_msg = res.get("error", {}).get("message", "Error desconocido")
+                            st.error(f"Error al registrar: {error_msg}")
+                elif r_pass != r_pass2:
+                    st.warning("Las contraseñas no coinciden.")
+                else:
+                    st.warning("Completa todos los campos.")
+                
+        st.markdown("<div style='text-align:center; color:#64748b; font-size:0.85rem; letter-spacing:1px; margin-top:10px; margin-bottom:10px;'>O CONTINÚA CON</div>", unsafe_allow_html=True)
+        
+        # Inyectar el botón oficial de Google usando HTML/JS
+        GOOGLE_CLIENT_ID = "1013013714214-reh650kj1863ho09dknj3541us7aqljk.apps.googleusercontent.com"
+        
+        # Como Streamlit no maneja POST requests de Google, usamos ux_mode="popup" y un callback
+        # que recargue la página de Streamlit con el parámetro en la URL.
+        html_code_popup = f"""
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <div style="display: flex; justify-content: center; width: 100%; padding-top: 5px;">
+            <div id="g_id_onload"
+                 data-client_id="{GOOGLE_CLIENT_ID}"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin" 
+                 data-type="standard" 
+                 data-shape="rectangular" 
+                 data-theme="outline" 
+                 data-text="signin_with" 
+                 data-size="large" 
+                 data-logo_alignment="left" 
+                 data-width="350">
+            </div>
+        </div>
+        <script>
+            function handleCredentialResponse(response) {{
+                const token = response.credential;
+                // Redirigir a la misma página de Streamlit con el token en el query param
+                window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?google_id_token=" + token;
+            }}
+        </script>
+        """
+        import streamlit.components.v1 as components
+        components.html(html_code_popup, height=80)
+            
+    st.stop()
+    
+# ── Perfil de Usuario (Modal) ──────────────────────────────────────────────────
+@st.dialog("👤 Mi Perfil")
+def show_profile():
+    st.markdown("### Datos de la cuenta")
+    user_email = st.session_state.get("user_email", "Usuario de Google")
+    
+    st.markdown(f"""
+    <div style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b; margin-bottom:15px;">
+        <div style="color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-bottom:5px;">Correo electrónico</div>
+        <div style="color:#e2e8f0; font-weight:bold; font-size:1.1rem;">{user_email}</div>
+    </div>
+    <div style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b; margin-bottom:20px;">
+        <div style="color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-bottom:5px;">Tipo de Plan</div>
+        <div style="color:#10b981; font-weight:bold; font-size:1.1rem;">⭐ Premium (Gratuito)</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def render_steps(steps):
@@ -249,6 +428,15 @@ def run_test_subprocess(prompt, headless, test_type="web"):
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("## QA Agent")
+    st.markdown("---")
+
+    # ── Perfil de Usuario ──────────────────────────────────────────
+    if st.button("👤 Mi Perfil", use_container_width=True):
+        show_profile()
+    if st.button("🚪 Cerrar Sesión", use_container_width=True):
+        st.session_state.user_logged_in = False
+        st.session_state.user_email = ""
+        st.rerun()
     st.markdown("---")
 
     # ── Configuración de IA ────────────────────────────────────────
