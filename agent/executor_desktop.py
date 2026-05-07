@@ -5,11 +5,15 @@ executor_desktop.py - Módulo de ejecución para desktop automation usando PyAut
 import time
 import subprocess
 import os
-import pyautogui
 
-# Configuración de seguridad de PyAutoGUI
-pyautogui.FAILSAFE = True  # Mueve el ratón a una esquina para abortar
-pyautogui.PAUSE = 0.5      # Pausa entre comandos
+# Intentar importar PyAutoGUI de forma segura; en entornos sin display (deploy) puede fallar
+try:
+    import pyautogui
+    # Configuración de seguridad de PyAutoGUI
+    pyautogui.FAILSAFE = True  # Mueve el ratón a una esquina para abortar
+    pyautogui.PAUSE = 0.5      # Pausa entre comandos
+except Exception:
+    pyautogui = None
 
 def _execute_step(step: dict) -> dict:
     """
@@ -30,16 +34,29 @@ def _execute_step(step: dict) -> dict:
             time.sleep(2) # Esperar a que cargue
 
         elif action == "type_text":
+            if pyautogui is None:
+                result["status"] = "error"
+                result["detail"] = "pyautogui no disponible en este entorno; no se puede ejecutar 'type_text'"
+                return result
             pyautogui.write(value, interval=0.1)
             result["status"] = "ok"
             result["detail"] = f"Escribió: '{value}'"
 
         elif action == "press_key":
+            if pyautogui is None:
+                result["status"] = "error"
+                result["detail"] = "pyautogui no disponible en este entorno; no se puede ejecutar 'press_key'"
+                return result
             pyautogui.press(value)
             result["status"] = "ok"
             result["detail"] = f"Presionó tecla: {value}"
 
         elif action == "click":
+            if pyautogui is None:
+                result["status"] = "error"
+                result["detail"] = "pyautogui no disponible en este entorno; no se puede ejecutar 'click'"
+                return result
+
             if "," in selector:
                 # Coordenadas x,y
                 x, y = map(int, selector.split(","))
