@@ -420,14 +420,52 @@ if not st.session_state.user_logged_in:
             st.caption("Autenticación con Google habilitada y protegida por Firebase. Contacta al administrador si tienes problemas de acceso.")
         
         if GOOGLE_CLIENT_ID:
-            auth_url = get_google_auth_url()
-            st.link_button(
-                "Acceder con Google", 
-                auth_url, 
-                type="secondary", 
-                use_container_width=True,
-                icon=":material/login:" # Icono decorativo
-            )
+            # Componente de Google Login en modo POPUP
+            html_popup = f"""
+            <div id="g_id_onload"
+                 data-client_id="{GOOGLE_CLIENT_ID}"
+                 data-context="signin"
+                 data-ux_mode="popup"
+                 data-callback="onSignIn"
+                 data-auto_prompt="false">
+            </div>
+            <div style="display: flex; justify-content: center;">
+                <div class="g_id_signin"
+                     data-type="standard"
+                     data-shape="rectangular"
+                     data-theme="outline"
+                     data-text="signin_with"
+                     data-size="large"
+                     data-logo_alignment="left">
+                </div>
+            </div>
+            <script src="https://accounts.google.com/gsi/client" async defer></script>
+            <script>
+                function onSignIn(response) {{
+                    const token = response.credential;
+                    // Enviamos el token a la URL de Streamlit para que lo procese el backend
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("google_id_token", token);
+                    window.parent.location.href = url.toString();
+                }}
+            </script>
+            """
+            import streamlit.components.v1 as components
+            components.html(html_popup, height=50)
+            
+            # También mantenemos el manejo del token recibido
+            if "google_id_token" in st.query_params:
+                token = st.query_params.get("google_id_token")
+                with st.spinner("Autenticando..."):
+                    res = firebase_google_login(token)
+                    if "idToken" in res:
+                        st.session_state.user_logged_in = True
+                        st.session_state.user_email = res.get("email")
+                        st.session_state.firebase_id_token = res.get("idToken")
+                        st.query_params.clear()
+                        st.rerun()
+                    else:
+                        st.error("Error al validar con Firebase.")
             
     st.stop()
     
