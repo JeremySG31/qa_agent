@@ -32,6 +32,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Verificación de Dominio (Google Search Console) ─────────────────────────────
+st.markdown('<meta name="google-site-verification" content="1TyKKbQRLHJ9LvfxZnKzvgQUzSuz5EH_J4g5vjc3O-I" />', unsafe_allow_html=True)
+
 # ── CSS ────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
