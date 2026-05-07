@@ -131,10 +131,19 @@ html, body, [class*="css"] { font-family:'Syne',sans-serif; background:#0d0f14; 
 }
 
 div[data-testid="stSidebar"] { background:#0a0c10 !important; border-right:1px solid #1e293b; }
-.stTextInput>div>div>input, .stTextArea>div>div>textarea {
-  background:#111827 !important; border:1px solid #334155 !important;
-  color:#e2e8f0 !important; border-radius:8px !important;
-  font-family:'JetBrains Mono',monospace !important;
+.stTextInput [data-baseweb="input"], .stTextArea [data-baseweb="textarea"] {
+  background-color: #111827 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+}
+.stTextInput input, .stTextArea textarea {
+  color: #e2e8f0 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  background: transparent !important;
+}
+/* Ocultar el ojo nativo de contraseñas del navegador (Edge) para evitar duplicados con Streamlit */
+input::-ms-reveal, input::-ms-clear {
+  display: none;
 }
 .stButton>button { border-radius:8px !important; font-family:'Syne',sans-serif !important; font-weight:700 !important; }
 .stSelectbox>div>div { background:#111827 !important; border:1px solid #334155 !important; }
@@ -244,6 +253,8 @@ with st.sidebar:
 
     # ── Configuración de IA ────────────────────────────────────────
     with st.expander("Configuracion de IA", expanded=False):
+        st.toggle("Activar Inteligencia Artificial", value=False, key="gemini_enabled", help="Apágalo para no consumir la cuota de tu API.")
+
         api_key_input = st.text_input(
             "Gemini API Key",
             value=st.session_state.gemini_api_key,
@@ -253,8 +264,11 @@ with st.sidebar:
         if api_key_input != st.session_state.gemini_api_key:
             st.session_state.gemini_api_key = api_key_input
             st.rerun()
-        if st.session_state.gemini_api_key:
-            st.success("✅ API Key configurada en sesión")
+            
+        if st.session_state.gemini_api_key and st.session_state.gemini_enabled:
+            st.success("✅ IA Activada")
+        elif not st.session_state.gemini_enabled:
+            st.info("⏸️ IA Pausada (Modo básico)")
 
         st.caption("Obtén tu clave gratis en [ai.google.dev](https://ai.google.dev)")
 
@@ -340,19 +354,32 @@ with tab_run:
     with col_left:
         # Prompt preseleccionado desde sidebar
         default_prompt = st.session_state.pop("sidebar_prompt", "")
+        
+        is_ai_active = st.session_state.get("gemini_enabled", True) and st.session_state.get("gemini_api_key", "")
 
         test_url = st.text_input(
-            "URL del sitio a probar",
+            "URL del sitio a probar" if is_ai_active else "URL a verificar (Modo Ping/Básico)",
             placeholder="https://mi-sitio.com (vacio para demo)",
-            help="El agente usara esta URL como base para generar los pasos."
+            help="El agente usara esta URL como base para generar los pasos." if is_ai_active else "El agente solo abrirá esta URL para comprobar si está disponible."
         )
 
-        prompt = st.text_area(
-            "Que quieres probar? (lenguaje natural)",
-            value=default_prompt,
-            placeholder='Ej: "prueba el formulario de login"',
-            height=120,
-        )
+        if is_ai_active:
+            prompt = st.text_area(
+                "¿Qué quieres probar? (Lenguaje Natural con IA)",
+                value=default_prompt,
+                placeholder='Ej: "prueba el formulario de login"',
+                height=120,
+            )
+        else:
+            prompt = st.text_area(
+                "Lenguaje natural desactivado (IA Apagada)",
+                value=default_prompt,
+                placeholder='La Inteligencia Artificial está pausada. Ve a la pestaña "Constructor Visual" para pasos manuales.',
+                height=120,
+                disabled=True,
+                help="Sin IA, el sistema no puede interpretar lenguaje natural. Usa el Constructor Visual para pruebas complejas gratuitas."
+            )
+            st.info("💡 **Consejo:** Para crear un test paso a paso sin gastar cuota de IA, dirígete a la pestaña superior **Constructor Visual**.")
 
         test_name = st.text_input(
             "Nombre del test (opcional)",
@@ -392,8 +419,14 @@ with tab_run:
                 full_prompt = f"{full_prompt} en {test_url.strip()}"
 
             # 1. Generar plan
-            with st.spinner("Generando plan con IA..."):
-                steps = generate_test_plan(full_prompt, api_key=st.session_state.get("gemini_api_key", ""))
+            spinner_msg = "Generando plan con IA..." if st.session_state.gemini_enabled and st.session_state.gemini_api_key else "Generando plan básico..."
+            with st.spinner(spinner_msg):
+                active_api_key = st.session_state.gemini_api_key if st.session_state.gemini_enabled else ""
+                try:
+                    steps = generate_test_plan(full_prompt, api_key=active_api_key)
+                except Exception as e:
+                    st.error(str(e))
+                    st.stop()
 
             st.session_state.plan_preview = steps
 
@@ -482,6 +515,35 @@ with tab_builder:
             if b_value:    step["value"]    = b_value
             st.session_state.custom_steps.append(step)
             st.rerun()
+
+        st.markdown("---")
+        st.markdown("**3. Añadir pasos con IA**")
+        is_ai_active = st.session_state.get("gemini_enabled", True) and st.session_state.get("gemini_api_key", "")
+        
+        if is_ai_active:
+            ai_step_prompt = st.text_area("¿Qué acción deseas añadir? (Lenguaje Natural)", placeholder="Ej: escribe 'admin' en el campo de usuario y dale al botón enviar", height=80, key="ai_step_prompt")
+            if st.button("✨ Generar paso con IA", use_container_width=True):
+                if ai_step_prompt.strip():
+                    with st.spinner("Interpretando acción..."):
+                        from agent.planner import generate_test_plan
+                        try:
+                            new_steps = generate_test_plan(ai_step_prompt, api_key=st.session_state.gemini_api_key)
+                            if new_steps:
+                                st.session_state.custom_steps.extend(new_steps)
+                                st.rerun()
+                        except Exception as e:
+                            st.error(str(e))
+                else:
+                    st.warning("Escribe una instrucción primero.")
+        else:
+            st.text_area(
+                "Lenguaje natural desactivado",
+                placeholder="Activa la IA en el menú lateral para añadir pasos automáticamente.",
+                height=80,
+                disabled=True,
+                key="ai_step_prompt_disabled",
+                help="La Inteligencia Artificial está pausada."
+            )
 
         st.markdown("---")
         b_test_name = st.text_input("🏷️ Nombre del test", placeholder="Mi Test Personalizado", key="b_name")

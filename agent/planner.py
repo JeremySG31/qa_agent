@@ -47,7 +47,7 @@ def _fallback_plan(prompt: str) -> list[dict]:
 
     # Si no hay URL en el prompt y no se usa Gemini, se requiere configurar la API Key
     return [
-        {"action": "open_url", "value": "data:text/html,<h1>Se requiere API Key de Gemini o especificar una URL en el prompt</h1>"},
+        {"action": "open_url", "value": "data:text/html,%3Ch1%3ESe%20requiere%20API%20Key%20de%20Gemini%20o%20especificar%20una%20URL%20en%20el%20prompt%3C%2Fh1%3E"},
         {"action": "validate_text", "selector": "h1", "value": "Esperando configuración"}
     ]
 
@@ -58,7 +58,7 @@ def _plan_with_gemini(prompt: str, api_key: str) -> list[dict]:
     Devuelve una lista de pasos en formato dict.
     """
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-pro")
 
     system_instruction = (
         "Eres un experto en QA automatizado con Selenium. "
@@ -96,7 +96,8 @@ def generate_test_plan(prompt: str, api_key: str = None) -> list[dict]:
             _safe_print("Usando Gemini para generar el plan de prueba...")
             return _plan_with_gemini(prompt, api_key)
         except Exception as e:
-            _safe_print(f"Gemini fallo ({e}), usando plan generico.")
+            _safe_print(f"Gemini fallo ({e}), propagando error.")
+            raise Exception(f"Fallo en la API de Gemini: {e}")
 
     _safe_print("Generando plan basico (modo sin IA)...")
     return _fallback_plan(prompt)
