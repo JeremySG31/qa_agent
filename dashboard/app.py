@@ -213,8 +213,6 @@ if "firebase_id_token" not in st.session_state:
 # Se recomienda rotar esta clave en la consola de Firebase
 FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "").strip()
 FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "qa-agent-web").strip()
-FIREBASE_REQUEST_URI = os.getenv("FIREBASE_REQUEST_URI", "http://localhost:8501").strip()
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 
 
 def firebase_headers():
@@ -268,19 +266,6 @@ def firebase_register(email, password):
         return {"error": {"message": "INVALID_API_KEY"}}
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_API_KEY}"
     return firebase_request("POST", url, json={"email": email, "password": password, "returnSecureToken": True})
-
-
-def firebase_google_login(id_token):
-    if not FIREBASE_API_KEY:
-        return {"error": {"message": "INVALID_API_KEY"}}
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={FIREBASE_API_KEY}"
-    payload = {
-        "postBody": f"id_token={quote(id_token)}&providerId=google.com",
-        "requestUri": FIREBASE_REQUEST_URI,
-        "returnIdpCredential": True,
-        "returnSecureToken": True
-    }
-    return firebase_request("POST", url, json=payload)
 
 
 def firebase_save_settings(email, gemini_key):
