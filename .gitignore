@@ -46,6 +46,7 @@ venv.bak/
 .pytest_cache/
 .coverage
 htmlcov/
+streamlit.*.log
 
 # OS
 Thumbs.db

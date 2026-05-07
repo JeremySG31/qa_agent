@@ -20,9 +20,16 @@ Uso:
 
 import sys
 import argparse
+from pathlib import Path
 from agent.planner  import generate_test_plan
 from agent.executor import run_test
 from agent.reporter import save_result
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent / ".env")
+except ImportError:
+    pass
 
 
 def parse_args():

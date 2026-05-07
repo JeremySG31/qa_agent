@@ -29,6 +29,9 @@ except ImportError:
     GEMINI_AVAILABLE = False
 
 
+DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+
+
 def _fallback_plan(prompt: str) -> list[dict]:
     """
     Genera un plan genérico básico si Gemini no está disponible o no hay API Key.
@@ -58,7 +61,7 @@ def _plan_with_gemini(prompt: str, api_key: str) -> list[dict]:
     Devuelve una lista de pasos en formato dict.
     """
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip())
 
     system_instruction = (
         "Eres un experto en QA automatizado con Selenium. "
@@ -90,6 +93,13 @@ def generate_test_plan(prompt: str, api_key: str = None) -> list[dict]:
     """
     if api_key is None:
         api_key = os.getenv("GEMINI_API_KEY", "")
+    api_key = api_key.strip()
+
+    if api_key and not GEMINI_AVAILABLE:
+        raise Exception(
+            "Gemini esta configurado, pero falta instalar google-generativeai. "
+            "Ejecuta: pip install -r requirements.txt"
+        )
 
     if GEMINI_AVAILABLE and api_key:
         try:

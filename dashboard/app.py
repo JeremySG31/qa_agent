@@ -6,6 +6,7 @@ Ejecutar con: streamlit run dashboard/app.py
 import sys, os, json, subprocess, re
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import quote
 
 import streamlit as st
 
@@ -201,55 +202,101 @@ if "gemini_enabled" not in st.session_state:
 if "key_version" not in st.session_state:
     st.session_state.key_version = 0
 if "gemini_api_key" not in st.session_state:
-    st.session_state.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+    st.session_state.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+if "firebase_id_token" not in st.session_state:
+    st.session_state.firebase_id_token = ""
 
 # ── Configuración de Firebase ──────────────────────────────────────────────────
-FIREBASE_API_KEY = "AIzaSyCa3VrUGt-IpwUHlTvNvTBaNfMGMF-VoLE"
+# Se recomienda rotar esta clave en la consola de Firebase
+FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "").strip()
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "qa-agent-web").strip()
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+
+
+def firebase_headers():
+    token = st.session_state.get("firebase_id_token", "")
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
+def firebase_error_message(raw_error):
+    error_map = {
+        "API key not valid. Please pass a valid API key.": "La API key de Firebase no es valida. Revisa FIREBASE_API_KEY en .env.",
+        "EMAIL_EXISTS": "Este correo ya esta registrado.",
+        "EMAIL_NOT_FOUND": "El correo electronico no esta registrado.",
+        "INVALID_API_KEY": "FIREBASE_API_KEY no es valida o esta vacia.",
+        "INVALID_IDP_RESPONSE": "Google no entrego una credencial valida. Revisa el Google Client ID y los origenes autorizados.",
+        "INVALID_LOGIN_CREDENTIALS": "Credenciales incorrectas. Revisa tu correo y contrasena.",
+        "INVALID_PASSWORD": "La contrasena es incorrecta.",
+        "MISSING_PASSWORD": "Ingresa una contrasena.",
+        "OPERATION_NOT_ALLOWED": "Este proveedor no esta habilitado en Firebase Authentication.",
+        "TOO_MANY_ATTEMPTS_TRY_LATER": "Demasiados intentos. Intenta mas tarde.",
+        "USER_DISABLED": "Esta cuenta ha sido deshabilitada.",
+    }
+    return error_map.get(raw_error, f"Error de autenticacion: {raw_error}")
+
+
+def firebase_request(method, url, **kwargs):
+    import requests
+    try:
+        res = requests.request(method, url, timeout=20, **kwargs)
+        data = res.json() if res.content else {}
+    except requests.RequestException as exc:
+        return {"error": {"message": f"NETWORK_ERROR: {exc}"}}
+    except ValueError:
+        return {"error": {"message": "Respuesta no JSON de Firebase"}}
+
+    if res.ok:
+        return data
+    if "error" not in data:
+        data["error"] = {"message": f"HTTP_{res.status_code}"}
+    return data
+
 
 def firebase_login(email, password):
-    import requests
+    if not FIREBASE_API_KEY:
+        return {"error": {"message": "INVALID_API_KEY"}}
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
-    res = requests.post(url, json={"email": email, "password": password, "returnSecureToken": True})
-    return res.json()
+    return firebase_request("POST", url, json={"email": email, "password": password, "returnSecureToken": True})
+
 
 def firebase_register(email, password):
-    import requests
+    if not FIREBASE_API_KEY:
+        return {"error": {"message": "INVALID_API_KEY"}}
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_API_KEY}"
-    res = requests.post(url, json={"email": email, "password": password, "returnSecureToken": True})
-    return res.json()
+    return firebase_request("POST", url, json={"email": email, "password": password, "returnSecureToken": True})
+
 
 def firebase_google_login(id_token):
-    import requests
+    if not FIREBASE_API_KEY:
+        return {"error": {"message": "INVALID_API_KEY"}}
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={FIREBASE_API_KEY}"
     payload = {
-        "postBody": f"id_token={id_token}&providerId=google.com",
+        "postBody": f"id_token={quote(id_token)}&providerId=google.com",
         "requestUri": "http://localhost:8501",
         "returnIdpCredential": True,
         "returnSecureToken": True
     }
-    res = requests.post(url, json=payload)
-    return res.json()
+    return firebase_request("POST", url, json=payload)
+
 
 def firebase_save_settings(email, gemini_key):
-    import requests
     # Sanitizar email para el ID del documento
     doc_id = email.replace("@", "_at_").replace(".", "_dot_")
-    url = f"https://firestore.googleapis.com/v1/projects/qa-agent-web/databases/(default)/documents/users/{doc_id}?updateMask.fieldPaths=gemini_api_key&key={FIREBASE_API_KEY}"
+    url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?updateMask.fieldPaths=gemini_api_key&key={FIREBASE_API_KEY}"
     payload = {
         "fields": {
             "gemini_api_key": {"stringValue": gemini_key}
         }
     }
     # Usar patch para crear o actualizar el documento
-    requests.patch(url, json=payload)
+    return firebase_request("PATCH", url, json=payload, headers=firebase_headers())
+
 
 def firebase_load_settings(email):
-    import requests
     doc_id = email.replace("@", "_at_").replace(".", "_dot_")
-    url = f"https://firestore.googleapis.com/v1/projects/qa-agent-web/databases/(default)/documents/users/{doc_id}?key={FIREBASE_API_KEY}"
-    res = requests.get(url)
-    if res.status_code == 200:
-        data = res.json()
+    url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?key={FIREBASE_API_KEY}"
+    data = firebase_request("GET", url, headers=firebase_headers())
+    if "error" not in data:
         return data.get("fields", {}).get("gemini_api_key", {}).get("stringValue", "")
     return ""
 
@@ -262,13 +309,20 @@ if "google_id_token" in st.query_params:
             email = res.get("email")
             st.session_state.user_logged_in = True
             st.session_state.user_email = email
+            st.session_state.firebase_id_token = res.get("idToken", "")
             # CARGAR CONFIGURACIÓN DESDE FIRESTORE
             st.session_state.gemini_api_key = firebase_load_settings(email)
             # Limpiar la URL y recargar
             st.query_params.clear()
             st.rerun()
         else:
-            st.error("Error al autenticar con Google")
+            raw_error = res.get("error", {}).get("message", "Error desconocido")
+            st.error(firebase_error_message(raw_error))
+
+if "auth_error" in st.query_params:
+    raw_error = st.query_params.get("auth_error")
+    st.error(f"Google Login no pudo abrirse: {raw_error}. Revisa que http://localhost:8501 este en Authorized JavaScript origins.")
+    st.query_params.clear()
 
 # ── Pantalla de Login ─────────────────────────────────────────────────────────
 if not st.session_state.user_logged_in:
@@ -295,20 +349,13 @@ if not st.session_state.user_logged_in:
                         if "idToken" in res:
                             st.session_state.user_logged_in = True
                             st.session_state.user_email = res.get("email")
+                            st.session_state.firebase_id_token = res.get("idToken", "")
                             # CARGAR CONFIGURACIÓN DESDE FIRESTORE
                             st.session_state.gemini_api_key = firebase_load_settings(res.get("email"))
                             st.rerun()
                         else:
                             raw_error = res.get("error", {}).get("message", "Error desconocido")
-                            error_map = {
-                                "INVALID_LOGIN_CREDENTIALS": "Credenciales incorrectas. Revisa tu correo y contraseña.",
-                                "EMAIL_NOT_FOUND": "El correo electrónico no está registrado.",
-                                "INVALID_PASSWORD": "La contraseña es incorrecta.",
-                                "USER_DISABLED": "Esta cuenta ha sido deshabilitada.",
-                                "TOO_MANY_ATTEMPTS_TRY_LATER": "Demasiados intentos. Intenta más tarde."
-                            }
-                            friendly_error = error_map.get(raw_error, f"Error de Login: {raw_error}")
-                            st.error(friendly_error)
+                            st.error(firebase_error_message(raw_error))
                 else:
                     st.warning("Completa los campos")
                 
@@ -323,18 +370,13 @@ if not st.session_state.user_logged_in:
                         if "idToken" in res:
                             st.session_state.user_logged_in = True
                             st.session_state.user_email = res.get("email")
+                            st.session_state.firebase_id_token = res.get("idToken", "")
                             # CARGAR CONFIGURACIÓN DESDE FIRESTORE (estará vacío pero inicializa)
                             st.session_state.gemini_api_key = ""
                             st.rerun()
                         else:
                             raw_error = res.get("error", {}).get("message", "Error desconocido")
-                            error_map = {
-                                "EMAIL_EXISTS": "Este correo ya está registrado.",
-                                "OPERATION_NOT_ALLOWED": "El registro por correo no está habilitado en Firebase.",
-                                "TOO_MANY_ATTEMPTS_TRY_LATER": "Demasiados intentos. Intenta más tarde."
-                            }
-                            friendly_error = error_map.get(raw_error, f"Error al registrar: {raw_error}")
-                            st.error(friendly_error)
+                            st.error(firebase_error_message(raw_error))
                 elif r_pass != r_pass2:
                     st.warning("Las contraseñas no coinciden.")
                 else:
@@ -343,7 +385,12 @@ if not st.session_state.user_logged_in:
         st.markdown("<div style='text-align:center; color:#64748b; font-size:0.85rem; letter-spacing:1px; margin-top:10px; margin-bottom:10px;'>O CONTINÚA CON</div>", unsafe_allow_html=True)
         
         # Inyectar el botón oficial de Google usando HTML/JS
-        GOOGLE_CLIENT_ID = "1013013714214-reh650kj1863ho09dknj3541us7aqljk.apps.googleusercontent.com"
+        if not GOOGLE_CLIENT_ID:
+            st.warning("Falta GOOGLE_CLIENT_ID en .env para activar Google Login.")
+        elif not FIREBASE_API_KEY:
+            st.warning("Falta FIREBASE_API_KEY en .env para completar Google Login con Firebase.")
+        else:
+            st.caption("Google Login configurado. Si Google muestra modo prueba, cambia el publico de la app OAuth a produccion en Google Auth Platform.")
         
         # Como Streamlit no maneja POST requests de Google, usamos ux_mode="popup" y un callback
         # que recargue la página de Streamlit con el parámetro en la URL.
@@ -353,6 +400,7 @@ if not st.session_state.user_logged_in:
             <div id="g_id_onload"
                  data-client_id="{GOOGLE_CLIENT_ID}"
                  data-callback="handleCredentialResponse"
+                 data-error_callback="handleGoogleError"
                  data-auto_prompt="false">
             </div>
             <div class="g_id_signin" 
@@ -371,10 +419,15 @@ if not st.session_state.user_logged_in:
                 // Redirigir a la misma página de Streamlit con el token en el query param
                 window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?google_id_token=" + token;
             }}
+            function handleGoogleError(error) {{
+                const detail = encodeURIComponent(error && error.type ? error.type : "google_popup_error");
+                window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?auth_error=" + detail;
+            }}
         </script>
         """
         import streamlit.components.v1 as components
-        components.html(html_code_popup, height=80)
+        if GOOGLE_CLIENT_ID:
+            components.html(html_code_popup, height=80)
             
     st.stop()
     
@@ -484,6 +537,7 @@ with st.sidebar:
     if st.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.user_logged_in = False
         st.session_state.user_email = ""
+        st.session_state.firebase_id_token = ""
         st.rerun()
     st.markdown("---")
 
@@ -501,9 +555,12 @@ with st.sidebar:
         )
         if st.button("💾 Guardar Configuración", use_container_width=True):
             st.session_state.gemini_api_key = api_key_input
-            firebase_save_settings(st.session_state.user_email, api_key_input)
+            save_res = firebase_save_settings(st.session_state.user_email, api_key_input)
             msg_h = st.empty()
-            msg_h.success("¡Configuración guardada!")
+            if "error" in save_res:
+                msg_h.error(firebase_error_message(save_res.get("error", {}).get("message", "Error desconocido")))
+            else:
+                msg_h.success("¡Configuración guardada!")
             import time
             time.sleep(2)
             msg_h.empty()
@@ -511,8 +568,10 @@ with st.sidebar:
         if st.button("🗑️ Eliminar Key", use_container_width=True):
             st.session_state.gemini_api_key = ""
             st.session_state.key_version += 1 # Forzar a Streamlit a recrear el widget (limpiarlo)
-            firebase_save_settings(st.session_state.user_email, "")
+            save_res = firebase_save_settings(st.session_state.user_email, "")
             st.warning("Key eliminada de la base de datos.")
+            if "error" in save_res:
+                st.error(firebase_error_message(save_res.get("error", {}).get("message", "Error desconocido")))
             import time
             time.sleep(1.5)
             st.rerun()
@@ -560,7 +619,7 @@ with st.sidebar:
 st.markdown("""
 <div class="qa-header">
   <h1>QA Agent No-Code</h1>
-  <p>Automatiza pruebas web con IA sin tocar una linea de codigo</p>
+  <p>Crea pruebas repetibles, ejecutalas en navegador real y guarda reportes. Gemini es opcional: el constructor visual no consume tokens.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -665,11 +724,11 @@ with tab_run:
 
     # Ejecutar 
     if run_btn:
-        if not prompt.strip():
-            st.warning("Escribe un prompt primero.")
+        if not prompt.strip() and not test_url.strip():
+            st.warning("Escribe un prompt o indica una URL.")
         else:
             # Construir prompt con URL si se proporcionó
-            full_prompt = prompt.strip()
+            full_prompt = prompt.strip() or "verifica disponibilidad"
             if test_url.strip():
                 full_prompt = f"{full_prompt} en {test_url.strip()}"
 
