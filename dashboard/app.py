@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 
 from agent.reporter import load_all_results, clear_results, save_result
 from agent.planner  import generate_test_plan
+from auth.google_auth import get_google_auth_url, exchange_code_for_tokens, get_user_info
 
 # ── Cargar .env ────────────────────────────────────────────────────────────────
 try:
@@ -325,6 +326,28 @@ if "auth_error" in st.query_params:
     st.error(f"Google Login no pudo abrirse: {raw_error}. Revisa que {FIREBASE_REQUEST_URI} este en Authorized JavaScript origins de Google Cloud Console.")
     st.query_params.clear()
 
+# ── Manejo de Código OAuth (Nuevo Flujo Seguro) ───────────────────────────────
+if "code" in st.query_params:
+    auth_code = st.query_params.get("code")
+    with st.spinner("Finalizando autenticación con Google..."):
+        tokens = exchange_code_for_tokens(auth_code)
+        if tokens and tokens.get("id_token"):
+            # Ahora usamos el id_token para entrar en Firebase
+            res = firebase_google_login(tokens["id_token"])
+            if "idToken" in res:
+                email = res.get("email")
+                st.session_state.user_logged_in = True
+                st.session_state.user_email = email
+                st.session_state.firebase_id_token = res.get("idToken", "")
+                st.session_state.gemini_api_key = firebase_load_settings(email)
+                st.query_params.clear()
+                st.rerun()
+            else:
+                st.error("Error al vincular Google con Firebase.")
+        else:
+            st.error("No se pudo obtener el token de Google. Revisa las credenciales en .env")
+    st.query_params.clear()
+
 # ── Pantalla de Login ─────────────────────────────────────────────────────────
 if not st.session_state.user_logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -393,63 +416,19 @@ if not st.session_state.user_logged_in:
         else:
             st.caption("Autenticación con Google habilitada y protegida por Firebase. Contacta al administrador si tienes problemas de acceso.")
         
-        # Como Streamlit no maneja POST requests de Google, usamos ux_mode="popup" y un callback
-        # que recargue la página de Streamlit con el parámetro en la URL.
-        html_code_popup = f"""
-        <script src="https://accounts.google.com/gsi/client" async defer></script>
-        <div style="display: flex; justify-content: center; width: 100%; padding-top: 5px;">
-            <div id="g_id_onload"
-                 data-client_id="{GOOGLE_CLIENT_ID}"
-                 data-callback="handleCredentialResponse"
-                 data-error_callback="handleGoogleError"
-                 data-ux_mode="popup"
-                 data-itp_support="true"
-                 data-auto_prompt="false">
-            </div>
-            <div class="g_id_signin" 
-                 data-type="standard" 
-                 data-shape="rectangular" 
-                 data-theme="outline" 
-                 data-text="signin_with" 
-                 data-size="large" 
-                 data-logo_alignment="left" 
-                 data-width="350">
-            </div>
-        </div>
-        <script>
-            function handleCredentialResponse(response) {{
-                const token = response.credential;
-                try {{
-                    // Intentar redirigir la ventana SUPERIOR (top) para salir de los iframes de Streamlit Cloud
-                    const topUrl = new URL(window.top.location.href);
-                    topUrl.searchParams.set("google_id_token", token);
-                    topUrl.searchParams.delete("auth_error");
-                    window.top.location.href = topUrl.toString();
-                }} catch (e) {{
-                    // Fallback: si el navegador bloquea el acceso a window.top, usamos window.parent
-                    const parentUrl = new URL(window.parent.location.href);
-                    parentUrl.searchParams.set("google_id_token", token);
-                    parentUrl.searchParams.delete("auth_error");
-                    window.parent.location.href = parentUrl.toString();
-                }}
-            }}
-            function handleGoogleError(error) {{
-                const errorDetail = encodeURIComponent(error && error.type ? error.type : "google_popup_error");
-                try {{
-                    const topUrl = new URL(window.top.location.href);
-                    topUrl.searchParams.set("auth_error", errorDetail);
-                    window.top.location.href = topUrl.toString();
-                }} catch (e) {{
-                    const parentUrl = new URL(window.parent.location.href);
-                    parentUrl.searchParams.set("auth_error", errorDetail);
-                    window.parent.location.href = parentUrl.toString();
-                }}
-            }}
-        </script>
-        """
-        import streamlit.components.v1 as components
         if GOOGLE_CLIENT_ID:
-            components.html(html_code_popup, height=80)
+            # Botón nativo de Streamlit que redirige fuera del iframe
+            auth_url = get_google_auth_url()
+            st.markdown(f"""
+            <a href="{auth_url}" target="_self" style="text-decoration: none;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 12px; 
+                            background: white; color: #1e293b; padding: 12px; border-radius: 10px; 
+                            font-weight: 700; border: 1px solid #d1d5db; cursor: pointer;">
+                    <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" width="20px">
+                    Acceder con Google
+                </div>
+            </a>
+            """, unsafe_allow_html=True)
             
     st.stop()
     
