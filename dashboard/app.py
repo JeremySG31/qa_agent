@@ -417,12 +417,18 @@ if not st.session_state.user_logged_in:
         <script>
             function handleCredentialResponse(response) {{
                 const token = response.credential;
-                // Redirigir a la misma página de Streamlit con el token en el query param
-                window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?google_id_token=" + token;
+                // Detectar el origen correctamente (sin window.parent)
+                const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+                const pathname = window.location.pathname || '/';
+                const redirectUrl = origin + pathname + "?google_id_token=" + token;
+                window.location.href = redirectUrl;
             }}
             function handleGoogleError(error) {{
-                const detail = encodeURIComponent(error && error.type ? error.type : "google_popup_error");
-                window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?auth_error=" + detail;
+                const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+                const pathname = window.location.pathname || '/';
+                const errorDetail = encodeURIComponent(error && error.type ? error.type : "google_popup_error");
+                const redirectUrl = origin + pathname + "?auth_error=" + errorDetail;
+                window.location.href = redirectUrl;
             }}
         </script>
         """
