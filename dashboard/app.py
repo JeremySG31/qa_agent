@@ -402,6 +402,8 @@ if not st.session_state.user_logged_in:
                  data-client_id="{GOOGLE_CLIENT_ID}"
                  data-callback="handleCredentialResponse"
                  data-error_callback="handleGoogleError"
+                 data-ux_mode="popup"
+                 data-itp_support="true"
                  data-auto_prompt="false">
             </div>
             <div class="g_id_signin" 
@@ -417,18 +419,14 @@ if not st.session_state.user_logged_in:
         <script>
             function handleCredentialResponse(response) {{
                 const token = response.credential;
-                // Detectar el origen correctamente (sin window.parent)
-                const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
-                const pathname = window.location.pathname || '/';
-                const redirectUrl = origin + pathname + "?google_id_token=" + token;
-                window.location.href = redirectUrl;
+                // Redirigir la ventana PADRE (no el iframe) para que Streamlit capture el token
+                const redirectUrl = window.parent.location.origin + window.parent.location.pathname + "?google_id_token=" + token;
+                window.parent.location.href = redirectUrl;
             }}
             function handleGoogleError(error) {{
-                const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
-                const pathname = window.location.pathname || '/';
                 const errorDetail = encodeURIComponent(error && error.type ? error.type : "google_popup_error");
-                const redirectUrl = origin + pathname + "?auth_error=" + errorDetail;
-                window.location.href = redirectUrl;
+                const redirectUrl = window.parent.location.origin + window.parent.location.pathname + "?auth_error=" + errorDetail;
+                window.parent.location.href = redirectUrl;
             }}
         </script>
         """
