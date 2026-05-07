@@ -1,9 +1,9 @@
 from cryptography.fernet import Fernet
 import os
 
-# La clave debe ser una cadena base64 persistente en el .env
-# Si no existe, usamos una por defecto (aunque se recomienda generar una única)
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "7-uE_r3_r0b0t_v3ry_s3cr3t_k3y_for_qa_agent_123=")
+# La clave debe ser una cadena base64 persistente en el .env de 32 bytes
+# Esta es una llave válida generada para el proyecto
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "uN_K0vG7jZ3v8_WqX9Z_LpQ6m2N5vR8tY1uI4oP7sA0=")
 
 def get_fernet():
     return Fernet(ENCRYPTION_KEY.encode())
