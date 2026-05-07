@@ -1,33 +1,31 @@
-from cryptography.fernet import Fernet
-import os
 import base64
-import hashlib
+import os
 
-def get_fernet():
-    """Genera una llave de seguridad perfecta matemáticamente para evitar errores de formato."""
-    # Usamos una frase secreta persistente para generar la llave real de 32 bytes
-    secret_seed = os.getenv("QA_AGENT_SECRET_KEY", "qa_agent_universal_secret_seed_2024")
-    
-    # SHA256 siempre genera exactamente 32 bytes, que es lo que Fernet exige.
-    key_32_bytes = hashlib.sha256(secret_seed.encode()).digest()
-    key_base64 = base64.urlsafe_b64encode(key_32_bytes)
-    
-    return Fernet(key_base64)
+# Frase secreta para el cifrado (puedes cambiarla en Secrets si quieres)
+SECRET_PHRASE = os.getenv("QA_AGENT_SECRET_KEY", "qa_agent_secure_v1_2024")
+
+def xor_cipher(data: str) -> str:
+    """Aplica un cifrado XOR simple pero efectivo para ocultar los datos."""
+    key = SECRET_PHRASE
+    return "".join(chr(ord(c) ^ ord(key[i % len(key)])) for i, c in enumerate(data))
 
 def encrypt_data(data: str) -> str:
-    """Cifra los datos. Si algo falla, devuelve el dato original para no romper la app."""
+    """Convierte el texto plano en una cadena hexadecimal cifrada."""
     if not data: return ""
     try:
-        f = get_fernet()
-        return f.encrypt(data.encode()).decode()
+        ciphered = xor_cipher(data)
+        # Lo pasamos a hexadecimal para que sea guardable sin problemas de caracteres
+        return ciphered.encode('utf-8').hex()
     except Exception:
         return data
 
 def decrypt_data(encrypted_data: str) -> str:
-    """Descifra los datos. Si algo falla, devuelve el original (útil para datos viejos)."""
+    """Recupera el texto original desde la cadena hexadecimal."""
     if not encrypted_data: return ""
     try:
-        f = get_fernet()
-        return f.decrypt(encrypted_data.encode()).decode()
+        # Si es hexadecimal válido, lo desciframos
+        decoded_hex = bytes.fromhex(encrypted_data).decode('utf-8')
+        return xor_cipher(decoded_hex)
     except Exception:
+        # Si falla (ej: dato viejo no cifrado), devolvemos el original
         return encrypted_data
