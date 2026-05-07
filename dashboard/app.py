@@ -419,14 +419,31 @@ if not st.session_state.user_logged_in:
         <script>
             function handleCredentialResponse(response) {{
                 const token = response.credential;
-                // Redirigir la ventana PADRE (no el iframe) para que Streamlit capture el token
-                const redirectUrl = window.parent.location.origin + window.parent.location.pathname + "?google_id_token=" + token;
-                window.parent.location.href = redirectUrl;
+                try {{
+                    // Intentar redirigir la ventana SUPERIOR (top) para salir de los iframes de Streamlit Cloud
+                    const topUrl = new URL(window.top.location.href);
+                    topUrl.searchParams.set("google_id_token", token);
+                    topUrl.searchParams.delete("auth_error");
+                    window.top.location.href = topUrl.toString();
+                }} catch (e) {{
+                    // Fallback: si el navegador bloquea el acceso a window.top, usamos window.parent
+                    const parentUrl = new URL(window.parent.location.href);
+                    parentUrl.searchParams.set("google_id_token", token);
+                    parentUrl.searchParams.delete("auth_error");
+                    window.parent.location.href = parentUrl.toString();
+                }}
             }}
             function handleGoogleError(error) {{
                 const errorDetail = encodeURIComponent(error && error.type ? error.type : "google_popup_error");
-                const redirectUrl = window.parent.location.origin + window.parent.location.pathname + "?auth_error=" + errorDetail;
-                window.parent.location.href = redirectUrl;
+                try {{
+                    const topUrl = new URL(window.top.location.href);
+                    topUrl.searchParams.set("auth_error", errorDetail);
+                    window.top.location.href = topUrl.toString();
+                }} catch (e) {{
+                    const parentUrl = new URL(window.parent.location.href);
+                    parentUrl.searchParams.set("auth_error", errorDetail);
+                    window.parent.location.href = parentUrl.toString();
+                }}
             }}
         </script>
         """
