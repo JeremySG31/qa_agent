@@ -50,18 +50,47 @@ html, body, [class*="css"] { font-family:'Syne',sans-serif; background:#0d0f14; 
 .qa-header p  { color:#94a3b8; margin:0; font-size:.95rem; }
 
 .metric-box {
-  background:#111827; border:1px solid #1e293b;
-  border-radius:10px; padding:20px; text-align:center;
+  background: linear-gradient(145deg, #1e293b, #0a0c10);
+  border: 1px solid #38bdf840;
+  border-top: 1px solid #38bdf880;
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: 0 10px 30px -5px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
-.metric-value { font-family:'Syne',sans-serif; font-size:2.4rem; font-weight:800; line-height:1; }
-.metric-label { font-size:.75rem; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-top:6px; }
+.metric-box::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100%;
+  background: radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 60%);
+  pointer-events: none;
+}
+.metric-box:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px -5px rgba(56, 189, 248, 0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+  border-color: #38bdf8;
+}
+.metric-value { 
+  font-family: 'Syne', sans-serif; 
+  font-size: 3.5rem; 
+  font-weight: 800; 
+  line-height: 1.1; 
+  background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0px 4px 10px rgba(56,189,248,0.4));
+}
+.metric-label { font-size:.85rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-top:10px; font-weight:700; }
 
 .result-card {
-  background:#111827; border:1px solid #1e293b;
-  border-radius:10px; padding:20px 24px; margin-bottom:14px;
-  transition:border-color .2s;
+  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  border: 1px solid #1e293b;
+  border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
+  transition: all .25s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
 }
-.result-card:hover { border-color:#334155; }
+.result-card:hover { border-color:#334155; transform:translateY(-2px); box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); }
 .result-card.pass  { border-left:4px solid #10b981; }
 .result-card.fail  { border-left:4px solid #ef4444; }
 .result-title { font-family:'JetBrains Mono',monospace; font-size:.9rem; font-weight:600; color:#e2e8f0; margin-bottom:6px; }
@@ -126,6 +155,8 @@ if "custom_steps" not in st.session_state:
     st.session_state.custom_steps = []
 if "active_tab" not in st.session_state:
     st.session_state.active_tab = 0
+if "gemini_api_key" not in st.session_state:
+    st.session_state.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -215,12 +246,14 @@ with st.sidebar:
     with st.expander("Configuracion de IA", expanded=False):
         api_key_input = st.text_input(
             "Gemini API Key",
-            value=os.getenv("GEMINI_API_KEY", ""),
+            value=st.session_state.gemini_api_key,
             type="password",
-            help="Opcional. Sin key usa modo demo inteligente.",
+            help="Opcional. Sin key usa modo básico.",
         )
-        if api_key_input:
-            os.environ["GEMINI_API_KEY"] = api_key_input
+        if api_key_input != st.session_state.gemini_api_key:
+            st.session_state.gemini_api_key = api_key_input
+            st.rerun()
+        if st.session_state.gemini_api_key:
             st.success("✅ API Key configurada en sesión")
 
         st.caption("Obtén tu clave gratis en [ai.google.dev](https://ai.google.dev)")
@@ -360,7 +393,7 @@ with tab_run:
 
             # 1. Generar plan
             with st.spinner("Generando plan con IA..."):
-                steps = generate_test_plan(full_prompt)
+                steps = generate_test_plan(full_prompt, api_key=st.session_state.get("gemini_api_key", ""))
 
             st.session_state.plan_preview = steps
 

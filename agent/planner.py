@@ -29,111 +29,27 @@ except ImportError:
     GEMINI_AVAILABLE = False
 
 
-# Plantillas de pasos simulados para demos rapidas
-BASE_URL = "https://reviewstar-web.vercel.app"
-
-SIMULATED_PLANS = {
-    "inicio": [
-        {"action": "open_url",     "value": f"{BASE_URL}/index.html"},
-        {"action": "validate_text","selector": "h1",          "value": "ReviewStar"},
-        {"action": "validate_text","selector": "body",         "value": "Iniciar"},
-        {"action": "validate_text","selector": "body",         "value": "Registrarse"},
-    ],
-    "login": [
-        {"action": "open_url",      "value": f"{BASE_URL}/login.html"},
-        {"action": "validate_text", "selector": "h2",          "value": "Iniciar"},
-        {"action": "find_and_type", "selector": "input[type='email']",    "value": "test@reviewstar.com"},
-        {"action": "find_and_type", "selector": "input[type='password']", "value": "Test1234!"},
-        {"action": "click",         "selector": "button[type='submit']"},
-        {"action": "validate_url",  "value": BASE_URL},
-    ],
-    "login invalido": [
-        {"action": "open_url",      "value": f"{BASE_URL}/login.html"},
-        {"action": "find_and_type", "selector": "input[type='email']",    "value": "noexiste@fake.com"},
-        {"action": "find_and_type", "selector": "input[type='password']", "value": "clavemal"},
-        {"action": "click",         "selector": "button[type='submit']"},
-        {"action": "validate_exists","selector": ".error-message, .alert, [class*='error'], [class*='alert']"},
-    ],
-    "registro": [
-        {"action": "open_url",      "value": f"{BASE_URL}/register.html"},
-        {"action": "validate_text", "selector": "h2",                     "value": "Registrarse"},
-        {"action": "find_and_type", "selector": "input[type='text'], input[placeholder*='suario'], input[placeholder*='sername']",
-                                    "value": "TestUser123"},
-        {"action": "find_and_type", "selector": "input[type='email']",    "value": "testuser123@mail.com"},
-        {"action": "find_and_type", "selector": "input[type='password']", "value": "Secure123!"},
-        {"action": "click",         "selector": "button[type='submit']"},
-    ],
-    "feed": [
-        {"action": "open_url",      "value": f"{BASE_URL}/feed.html"},
-        {"action": "validate_text", "selector": "body",    "value": "ReviewStar"},
-    ],
-    "navegacion": [
-        {"action": "open_url",      "value": f"{BASE_URL}/index.html"},
-        {"action": "validate_text", "selector": "body",     "value": "Iniciar"},
-        {"action": "click",         "selector": "a[href*='login']"},
-        {"action": "validate_text", "selector": "h2",       "value": "Iniciar"},
-        {"action": "open_url",      "value": f"{BASE_URL}/index.html"},
-        {"action": "click",         "selector": "a[href*='register']"},
-        {"action": "validate_text", "selector": "h2",       "value": "Registrarse"},
-    ],
-    "forgot": [
-        {"action": "open_url",      "value": f"{BASE_URL}/login.html"},
-        {"action": "click",         "selector": "a[href*='forgot']"},
-        {"action": "validate_text", "selector": "body",     "value": "contrase"},
-    ],
-    "default": [
-        {"action": "open_url",      "value": f"{BASE_URL}/index.html"},
-        {"action": "validate_text", "selector": "h1",       "value": "ReviewStar"},
-        {"action": "validate_text", "selector": "body",     "value": "review"},
-    ],
-}
-
-
-def _keyword_match(prompt: str) -> list[dict]:
-    """Selecciona un plan simulado segun palabras clave en el prompt."""
-    prompt_lower = prompt.lower()
-
-    # Intentar extraer una URL del prompt
+def _fallback_plan(prompt: str) -> list[dict]:
+    """
+    Genera un plan genérico básico si Gemini no está disponible o no hay API Key.
+    Extrae la URL del prompt y genera un paso para abrirla.
+    """
     url_match = re.search(r'(https?://[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:/[^\s]*)?)', prompt)
     extracted_url = url_match.group(0) if url_match else None
 
-    keyword_map = {
-        "login invalido":  ["login inv", "credencial"],
-        "login":           ["login", "iniciar ses", "sign in"],
-        "registro":        ["registro", "registrar", "register", "sign up", "crear cuenta"],
-        "feed":            ["feed", "explorar"],
-        "navegacion":      ["navegaci", "navegar", "links", "enlaces"],
-        "forgot":          ["forgot", "olvid", "recuperar contrase"],
-        "inicio":          ["inicio", "home", "index"],
-    }
-
-    plan = None
-    for plan_key, keywords in keyword_map.items():
-        if any(kw in prompt_lower for kw in keywords):
-            plan = [dict(s) for s in SIMULATED_PLANS[plan_key]]
-            break
-
-    if not plan:
-        plan = [dict(s) for s in SIMULATED_PLANS["default"]]
-
-    # Si encontramos una URL en el prompt, reemplazamos la URL base del plan
     if extracted_url:
         if not extracted_url.startswith("http"):
             extracted_url = "https://" + extracted_url
+        return [
+            {"action": "open_url", "value": extracted_url},
+            {"action": "validate_text", "selector": "body", "value": ""}
+        ]
 
-        is_reviewstar = "reviewstar" in extracted_url.lower()
-
-        if is_reviewstar:
-            if plan and plan[0]["action"] == "open_url":
-                plan[0]["value"] = extracted_url
-        else:
-            # For non-reviewstar URLs, ONLY use the generic plan, because specific selectors will fail
-            plan = [
-                {"action": "open_url", "value": extracted_url},
-                {"action": "validate_text", "selector": "body", "value": ""},
-            ]
-
-    return plan
+    # Si no hay URL en el prompt y no se usa Gemini, se requiere configurar la API Key
+    return [
+        {"action": "open_url", "value": "data:text/html,<h1>Se requiere API Key de Gemini o especificar una URL en el prompt</h1>"},
+        {"action": "validate_text", "selector": "h1", "value": "Esperando configuración"}
+    ]
 
 
 def _plan_with_gemini(prompt: str, api_key: str) -> list[dict]:
@@ -166,20 +82,21 @@ def _plan_with_gemini(prompt: str, api_key: str) -> list[dict]:
     return steps
 
 
-def generate_test_plan(prompt: str) -> list[dict]:
+def generate_test_plan(prompt: str, api_key: str = None) -> list[dict]:
     """
     Punto de entrada principal del planner.
     1. Intenta usar Gemini si esta configurado.
-    2. Si falla o no esta disponible, usa plan simulado.
+    2. Si falla o no esta disponible, usa plan generico.
     """
-    api_key = os.getenv("GEMINI_API_KEY", "")
+    if api_key is None:
+        api_key = os.getenv("GEMINI_API_KEY", "")
 
     if GEMINI_AVAILABLE and api_key:
         try:
             _safe_print("Usando Gemini para generar el plan de prueba...")
             return _plan_with_gemini(prompt, api_key)
         except Exception as e:
-            _safe_print(f"Gemini fallo ({e}), usando plan simulado.")
+            _safe_print(f"Gemini fallo ({e}), usando plan generico.")
 
-    _safe_print("Usando plan simulado (modo demo)...")
-    return _keyword_match(prompt)
+    _safe_print("Generando plan basico (modo sin IA)...")
+    return _fallback_plan(prompt)
