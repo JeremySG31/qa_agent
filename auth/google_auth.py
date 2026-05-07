@@ -53,7 +53,7 @@ def get_google_auth_url() -> str:
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
-        "prompt": "consent",  # Força mostrar pantalla de consentimiento
+        "prompt": "select_account",  # Cambiado de consent a select_account
     }
     return f"{GOOGLE_AUTH_ENDPOINT}?{urlencode(params)}"
 
