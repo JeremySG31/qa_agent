@@ -210,6 +210,7 @@ if "firebase_id_token" not in st.session_state:
 # Se recomienda rotar esta clave en la consola de Firebase
 FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "").strip()
 FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "qa-agent-web").strip()
+FIREBASE_REQUEST_URI = os.getenv("FIREBASE_REQUEST_URI", "http://localhost:8501").strip()
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 
 
@@ -272,7 +273,7 @@ def firebase_google_login(id_token):
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={FIREBASE_API_KEY}"
     payload = {
         "postBody": f"id_token={quote(id_token)}&providerId=google.com",
-        "requestUri": "http://localhost:8501",
+        "requestUri": FIREBASE_REQUEST_URI,
         "returnIdpCredential": True,
         "returnSecureToken": True
     }
@@ -321,7 +322,7 @@ if "google_id_token" in st.query_params:
 
 if "auth_error" in st.query_params:
     raw_error = st.query_params.get("auth_error")
-    st.error(f"Google Login no pudo abrirse: {raw_error}. Revisa que http://localhost:8501 este en Authorized JavaScript origins.")
+    st.error(f"Google Login no pudo abrirse: {raw_error}. Revisa que {FIREBASE_REQUEST_URI} este en Authorized JavaScript origins de Google Cloud Console.")
     st.query_params.clear()
 
 # ── Pantalla de Login ─────────────────────────────────────────────────────────
@@ -390,7 +391,7 @@ if not st.session_state.user_logged_in:
         elif not FIREBASE_API_KEY:
             st.warning("Falta FIREBASE_API_KEY en .env para completar Google Login con Firebase.")
         else:
-            st.caption("Google Login configurado. Si Google muestra modo prueba, cambia el publico de la app OAuth a produccion en Google Auth Platform.")
+            st.caption("Autenticación con Google habilitada y protegida por Firebase. Contacta al administrador si tienes problemas de acceso.")
         
         # Como Streamlit no maneja POST requests de Google, usamos ux_mode="popup" y un callback
         # que recargue la página de Streamlit con el parámetro en la URL.

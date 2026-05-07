@@ -4,6 +4,9 @@
 
 Convierte prompts en lenguaje natural en pruebas automatizadas. Soporta automatización web (activa) y placeholders para desktop y mobile.
 
+**🌍 Aplicación en vivo**: [https://agent-automation.streamlit.app/](https://agent-automation.streamlit.app/)  
+**🔐 Autenticación**: Firebase + Google OAuth 2.0
+
 ---
 
 ## 📋 Tabla de Contenidos
@@ -72,6 +75,7 @@ qa_agent/
 - **Git** (para clonar el repo)
 - **Navegador instalado**: Google Chrome o Microsoft Edge
 - **Opcional**: API key de Google Gemini (en `.env`)
+- **Para despliegue público**: Cuenta Firebase + Google Cloud Console
 
 ### 2. Clonar / Descargar
 
@@ -84,14 +88,14 @@ cd qa_agent
 
 #### **Windows (PowerShell)**
 ```powershell
-python -m venv venv
-venv\Scripts\Activate.ps1
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
 #### **macOS / Linux**
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 ### 4. Instalar Dependencias
@@ -100,25 +104,90 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**Nota**: Si `webdriver-manager` no se instala correctamente, prueba:
-```bash
-pip install --upgrade webdriver-manager
-```
+### 5. Configurar Variables de Entorno (.env)
 
-### 5. (Opcional) Configurar Gemini API
-
-Si tienes API key de Gemini:
+Copia el archivo de ejemplo y configura tus credenciales:
 
 ```bash
 cp .env.example .env
-# Edita .env y agrega: GEMINI_API_KEY=tu_clave_aqui
+```
+
+Edita `.env` con los siguientes valores:
+
+```env
+# Firebase
+FIREBASE_API_KEY=tu_firebase_api_key
+FIREBASE_PROJECT_ID=qa-agent-web
+
+# Google OAuth 2.0
+GOOGLE_CLIENT_ID=tu_google_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=tu_google_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:8501
+FIREBASE_REQUEST_URI=http://localhost:8501
+
+# Gemini (Opcional)
+GEMINI_API_KEY=tu_gemini_api_key
+```
+
+**Ver sección de autenticación para obtener estas credenciales.**
+
+### 6. (Opcional) Configurar Gemini API
+
+Si tienes API key de Gemini, agrégala al `.env`:
+```env
+GEMINI_API_KEY=tu_clave_aqui
 ```
 
 **Sin API key**: El agente funciona en modo simulado (planes predefinidos por palabras clave).
 
 ---
 
-## 🚀 Uso
+## � Autenticación con Firebase y Google OAuth
+
+### Configuración en Google Cloud Console
+
+1. **Crear un proyecto** en [Google Cloud Console](https://console.cloud.google.com/)
+2. **Habilitar API**: OAuth 2.0 Consent Screen
+3. **Crear credencial OAuth 2.0**:
+   - Tipo: Aplicación web
+   - Orígenes JavaScript autorizados: `http://localhost:8501` y tu URL pública
+   - URIs de redirección autorizados: Los mismos orígenes
+4. **Copiar**: Client ID y Client Secret
+5. **Cambiar a público**: En OAuth Consent Screen, marca la app como *Público* (no testing)
+
+### Configuración en Firebase Console
+
+1. **Crear proyecto** en [Firebase Console](https://console.firebase.google.com/)
+2. **Authentication → Sign-in method**: Habilita Google
+3. **Authentication → Authorized domains**: Añade tu dominio
+4. **Copiar**: Firebase API Key y Project ID
+
+### Despliegue en Streamlit Cloud
+
+1. **Sube el código a GitHub**:
+   ```bash
+   git push origin main
+   ```
+2. **Despliega en Streamlit Cloud**:
+   - Ve a [share.streamlit.io](https://share.streamlit.io)
+   - Conecta tu repo de GitHub
+   - Configura variables de entorno en Advanced settings → Secrets
+
+3. **Añade estos secrets** en Streamlit Cloud:
+   ```
+   FIREBASE_API_KEY=tu_firebase_api_key
+   FIREBASE_PROJECT_ID=qa-agent-web
+   GOOGLE_CLIENT_ID=tu_google_client_id
+   GOOGLE_CLIENT_SECRET=tu_google_client_secret
+   GOOGLE_REDIRECT_URI=https://tu-app.streamlit.app
+   FIREBASE_REQUEST_URI=https://tu-app.streamlit.app
+   ```
+
+4. **Actualiza Google Cloud Console**: Añade tu URL pública a Orígenes autorizados
+
+---
+
+## �🚀 Uso
 
 ### CLI – Ejecutar Agente
 
@@ -165,14 +234,20 @@ python main.py "navega a example.com" --type web --no-headless
 
 ### Dashboard – Ver Resultados Visuales
 
+#### Local
 ```bash
 streamlit run dashboard/app.py
 ```
 
 Abre automáticamente: **http://localhost:8501**
 
+#### En Producción
+Visita: **https://agent-automation.streamlit.app/**
+
 #### Funcionalidades:
 
+- 🔐 **Autenticación**: Login con Google o Email/Password
+- 👤 **Perfil**: Información de usuario y plan
 - 📊 **Métricas**: Total tests, PASS, FAIL, tasa de éxito
 - 📋 **Lista de Resultados**: Cards expandibles con pasos
 - 🔍 **Filtros**: Por nombre y estado (PASS/FAIL)
@@ -394,5 +469,6 @@ Las contribuciones son bienvenidas. Por favor, abre un issue o PR.
 ---
 
 **Última actualización**: Mayo 2026  
-**Versión**: 1.0 MVP
+**Versión**: 1.1 (Firebase + Google OAuth)  
+**URL Pública**: [https://agent-automation.streamlit.app/](https://agent-automation.streamlit.app/)
 
