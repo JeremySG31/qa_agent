@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 
 from agent.reporter import load_all_results, clear_results, save_result
 from agent.planner  import generate_test_plan
+from agent.crypto   import encrypt_data, decrypt_data
 
 # ── Cargar .env ────────────────────────────────────────────────────────────────
 try:
@@ -269,12 +270,17 @@ def firebase_register(email, password):
 
 
 def firebase_save_settings(email, gemini_key):
+    """Cifra la API Key y la guarda directamente en Firestore."""
     # Sanitizar email para el ID del documento
     doc_id = email.replace("@", "_at_").replace(".", "_dot_")
     url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?updateMask.fieldPaths=gemini_api_key&key={FIREBASE_API_KEY}"
+    
+    # CIFRAR LA LLAVE ANTES DE ENVIARLA
+    encrypted_key = encrypt_data(gemini_key)
+    
     payload = {
         "fields": {
-            "gemini_api_key": {"stringValue": gemini_key}
+            "gemini_api_key": {"stringValue": encrypted_key}
         }
     }
     # Usar patch para crear o actualizar el documento
@@ -282,11 +288,14 @@ def firebase_save_settings(email, gemini_key):
 
 
 def firebase_load_settings(email):
+    """Carga la API Key y la descifra para su uso en la sesión."""
     doc_id = email.replace("@", "_at_").replace(".", "_dot_")
     url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?key={FIREBASE_API_KEY}"
     data = firebase_request("GET", url, headers=firebase_headers())
     if "error" not in data:
-        return data.get("fields", {}).get("gemini_api_key", {}).get("stringValue", "")
+        encrypted_key = data.get("fields", {}).get("gemini_api_key", {}).get("stringValue", "")
+        # DESCIFRAR LA LLAVE PARA QUE EL AGENTE LA USE
+        return decrypt_data(encrypted_key)
     return ""
 
 # ── Manejo de Código OAuth (ELIMINADO) ─────────────────────────────────────────
