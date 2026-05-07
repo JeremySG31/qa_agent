@@ -423,7 +423,7 @@ if not st.session_state.user_logged_in:
             # Botón nativo de Streamlit que redirige fuera del iframe
             auth_url = get_google_auth_url()
             st.markdown(f"""
-            <a href="{auth_url}" target="_self" style="text-decoration: none;">
+            <a href="{auth_url}" target="_top" style="text-decoration: none;">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 12px; 
                             background: white; color: #1e293b; padding: 12px; border-radius: 10px; 
                             font-weight: 700; border: 1px solid #d1d5db; cursor: pointer;">
