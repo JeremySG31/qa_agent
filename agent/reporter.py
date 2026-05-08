@@ -82,10 +82,10 @@ def save_result(result: dict, user_id: str = "default") -> str:
     safe_result = _make_json_safe(result)
 
     # Si es invitado, no gastar cuota de Firestore, guardar solo local
-    if user_id == "invitado@qa-agent.local":
+    if "invitado_" in user_id:
         path = _save_result_local(result, user_id)
         # Limitar invitado a max 10 tests locales para no llenar el disco
-        user_dir = RESULTS_DIR / "invitado_qa-agent_local"
+        user_dir = RESULTS_DIR / user_id.replace("@", "_").replace(".", "_")
         if user_dir.exists():
             files = sorted(user_dir.glob("*.json"), key=os.path.getmtime, reverse=True)
             for old_file in files[10:]:
@@ -114,7 +114,7 @@ def save_result(result: dict, user_id: str = "default") -> str:
 
 
 def load_all_results(user_id: str = "default") -> list[dict]:
-    if user_id == "invitado@qa-agent.local":
+    if "invitado_" in user_id:
         return _load_all_results_local(user_id)
 
     if FIREBASE_PROJECT_ID and FIREBASE_API_KEY:
@@ -145,7 +145,7 @@ def load_all_results(user_id: str = "default") -> list[dict]:
 
 
 def clear_results(user_id: str = "default") -> int:
-    if user_id == "invitado@qa-agent.local":
+    if "invitado_" in user_id:
         return _clear_results_local(user_id)
 
     if FIREBASE_PROJECT_ID and FIREBASE_API_KEY:

@@ -271,7 +271,15 @@ def firebase_request(method, url, **kwargs):
     return data
 
 
+
+def firebase_reset_password(email):
+    if not FIREBASE_API_KEY:
+        return {"error": {"message": "INVALID_API_KEY"}}
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_API_KEY}"
+    return firebase_request("POST", url, json={"requestType": "PASSWORD_RESET", "email": email})
+
 def firebase_login(email, password):
+
     if not FIREBASE_API_KEY:
         return {"error": {"message": "INVALID_API_KEY"}}
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
@@ -354,26 +362,50 @@ if not st.session_state.user_logged_in:
         tab_login, tab_register = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse"])
         
         with tab_login:
-            l_email = st.text_input("Correo electrónico", key="l_email")
-            l_pass = st.text_input("Contraseña", type="password", key="l_pass")
-            if st.button("Ingresar", use_container_width=True, type="primary"):
-                if l_email and l_pass:
-                    with st.spinner("Autenticando..."):
-                        res = firebase_login(l_email, l_pass)
-                        if "idToken" in res:
-                            st.session_state.user_logged_in = True
-                            st.session_state.user_email = res.get("email")
-                            st.session_state.firebase_id_token = res.get("idToken", "")
-                            # CARGAR CONFIGURACIÓN DESDE FIRESTORE
-                            st.session_state.gemini_api_key = firebase_load_settings(res.get("email"))
-                            # Persistir usuario en la URL para mantener sesión tras recarga
-                            st.query_params["user"] = st.session_state.user_email
-                            st.rerun()
-                        else:
-                            raw_error = res.get("error", {}).get("message", "Error desconocido")
-                            st.error(firebase_error_message(raw_error))
-                else:
-                    st.warning("Completa los campos")
+            saved_email = st.query_params.get("saved_email", "")
+            with st.form("login_form"):
+                l_email = st.text_input("Correo electrónico", value=saved_email, key="l_email")
+                l_pass = st.text_input("Contraseña", type="password", key="l_pass")
+                c1, c2 = st.columns([1, 1])
+                with c1:
+                    remember = st.checkbox("Recordar correo", value=bool(saved_email))
+                with c2:
+                    st.markdown("<div style='text-align:right;'><a href='#' style='color:#38bdf8; font-size:0.85rem; text-decoration:none;'></a></div>", unsafe_allow_html=True)
+                
+                submitted = st.form_submit_button("Ingresar", use_container_width=True, type="primary")
+                
+                if submitted:
+                    if l_email and l_pass:
+                        with st.spinner("Autenticando..."):
+                            res = firebase_login(l_email, l_pass)
+                            if "idToken" in res:
+                                st.session_state.user_logged_in = True
+                                st.session_state.user_email = res.get("email")
+                                st.session_state.firebase_id_token = res.get("idToken", "")
+                                st.session_state.gemini_api_key = firebase_load_settings(res.get("email"))
+                                st.query_params["user"] = st.session_state.user_email
+                                if remember:
+                                    st.query_params["saved_email"] = l_email
+                                elif "saved_email" in st.query_params:
+                                    del st.query_params["saved_email"]
+                                st.rerun()
+                            else:
+                                st.error(firebase_error_message(res.get("error", {}).get("message", "Error desconocido")))
+                    else:
+                        st.warning("Completa los campos")
+
+            with st.expander("¿Olvidaste tu contraseña?"):
+                reset_email = st.text_input("Ingresa tu correo para recuperar", value=l_email, key="reset_email")
+                if st.button("Enviar enlace de recuperación", use_container_width=True):
+                    if reset_email:
+                        with st.spinner("Enviando correo..."):
+                            reset_res = firebase_reset_password(reset_email)
+                            if "error" not in reset_res:
+                                st.success("¡Enlace enviado! Revisa tu bandeja de entrada o spam.")
+                            else:
+                                st.error(firebase_error_message(reset_res.get("error", {}).get("message", "")))
+                    else:
+                        st.warning("Ingresa tu correo electrónico primero.")
                 
         with tab_register:
             r_email = st.text_input("Correo electrónico", key="r_email")
@@ -402,15 +434,16 @@ if not st.session_state.user_logged_in:
         # ── Botón de Invitado (Acceso Rápido) ──────────────────────────────────
         st.markdown("<div style='margin-top:20px; margin-bottom:10px; border-top:1px solid #1e293b; padding-top:20px;'></div>", unsafe_allow_html=True)
         if st.button("🚀 Probar como Invitado (Sin registro)", use_container_width=True):
+            import uuid
             st.session_state.user_logged_in = True
-            st.session_state.user_email = "invitado@qa-agent.local"
+            st.session_state.user_email = f"invitado_{str(uuid.uuid4())[:8]}@qa-agent.local"
             st.session_state.is_guest = True
             st.session_state.ai_config = {} # No tiene API Key guardada
             st.query_params["user"] = st.session_state.user_email
             st.rerun()
 
-        st.markdown("<div style='text-align:center; color:#64748b; font-size:0.85rem; letter-spacing:1px; margin-top:20px; margin-bottom:20px;'>PROTEGIDO POR FIREBASE</div>", unsafe_allow_html=True)
-        st.caption("Usa tu correo y contraseña para acceder a tus reportes guardados en la nube.")
+        
+        
             
     st.stop()
     
@@ -658,10 +691,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local")
 
-if user_email == "invitado@qa-agent.local":
-    st.warning("🕵️ Estás en **Modo Invitado**. Los resultados solo se guardan temporalmente en este servidor (máx 10 tests) y se perderán. Para guardar en Firestore y tener un historial ilimitado, por favor [regístrate o inicia sesión].")
+if "invitado_" in user_email:
+    st.warning("🕵️ Estás en **Modo Invitado**. Los resultados solo se guardan de forma temporal (máx 10 tests) y se perderán. Para guardar en la nube y tener un historial ilimitado, por favor inicia sesión.")
 
 # ── Métricas ───────────────────────────────────────────────────────────────────
 results = load_all_results(user_id=user_email)
@@ -670,9 +703,10 @@ passed  = sum(1 for r in results if r.get("status") == "PASS")
 failed  = total - passed
 rate    = f"{int(passed/total*100)}%" if total > 0 else "–"
 
+total_label = "Tests (Máx 10)" if "invitado_" in user_email else "Total Tests"
 c1, c2, c3, c4 = st.columns(4)
 for col, val, label, color in [
-    (c1, total,  "Total Tests",    "#e2e8f0"),
+    (c1, f"{total}/10" if "invitado_" in user_email else total, total_label, "#e2e8f0"),
     (c2, passed, "Pasados",     "#10b981"),
     (c3, failed, "Fallados",    "#ef4444"),
     (c4, rate,   "Tasa de Exito",  "#818cf8"),
@@ -737,17 +771,18 @@ with tab_run:
     with col_right:
         st.markdown("**Opciones de ejecucion**")
         headless           = st.checkbox("Modo headless (sin ventana)", value=True)
-        preview_only       = st.checkbox("Solo previsualizar plan (sin ejecutar)", value=False)
         st.markdown("**Ajustes avanzados**")
         step_timeout       = st.select_slider("Timeout por elemento (seg)", options=[5, 10, 15, 20, 30], value=15)
         step_delay         = st.select_slider("Pausa entre pasos (seg)",    options=[0.0, 0.3, 0.5, 1.0, 2.0], value=0.3)
-        screenshot_on_fail = st.checkbox("Captura de pantalla al fallar", value=False)
         st.markdown("")
         run_btn = st.button("Generar y Ejecutar Test", type="primary", use_container_width=True)
 
     st.markdown("---")
 
     if run_btn:
+        if user_email == "invitado@qa-agent.local" and total >= 10:
+            st.error("🛑 **Límite Alcanzado:** Has llegado al límite de 10 pruebas gratuitas como invitado. ¡Por favor regístrate para continuar usando QA Agent sin límites!")
+            st.stop()
         if not prompt.strip() and not test_url.strip():
             st.warning("Escribe un prompt o indica una URL.")
         else:
@@ -771,14 +806,14 @@ with tab_run:
             render_plan_preview(steps)
             st.markdown("</div>", unsafe_allow_html=True)
 
-            if not preview_only:
+            if True:
                 from agent import executor_web
                 from agent.reporter import save_result as _save
                 final_name    = test_name.strip() or ("Test: " + full_prompt[:50])
                 result_holder = {}
                 
                 user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
-                if user_email_check == "invitado@qa-agent.local" and len(steps) > 7:
+                if "invitado_" in user_email_check and len(steps) > 7:
                     st.error("🛑 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba para prevenir abusos. Por favor, acorta tu prueba o inicia sesión.")
                     st.stop()
 
@@ -786,7 +821,7 @@ with tab_run:
                     for event in executor_web.run_test_streaming(
                         final_name, steps,
                         headless=headless, timeout=step_timeout,
-                        step_delay=step_delay, screenshot_on_fail=screenshot_on_fail,
+                        step_delay=step_delay, screenshot_on_fail=False,
                     ):
                         et = event.get("type")
                         if et == "start":
@@ -1026,6 +1061,9 @@ with tab_builder:
 
     # Ejecucion con streaming
     if run_custom:
+        if "invitado_" in st.session_state.get("user_email", "") and len(load_all_results(st.session_state.get("user_email", ""))) >= 10:
+            st.error("🛑 **Límite Alcanzado:** Has llegado al límite de 10 pruebas gratuitas como invitado. ¡Por favor regístrate para continuar usando QA Agent sin límites!")
+            st.stop()
         if not custom_steps:
             st.warning("Anade al menos un paso primero.")
         else:
@@ -1035,7 +1073,7 @@ with tab_builder:
             result_holder = {}
             
             user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
-            if user_email_check == "invitado@qa-agent.local" and len(custom_steps) > 7:
+            if "invitado_" in user_email_check and len(custom_steps) > 7:
                 st.error("🛑 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
                 st.stop()
 
@@ -1090,7 +1128,7 @@ with tab_builder:
 with tab_results:
     st.markdown('<div class="section-title">📊 Historial de resultados</div>', unsafe_allow_html=True)
 
-    user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+    user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local")
     results = load_all_results(user_id=user_email)
     total = len(results)  # Calcular total ANTES de usarlo
 
