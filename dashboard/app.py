@@ -412,20 +412,38 @@ if not st.session_state.user_logged_in:
             r_pass = st.text_input("Contraseña", type="password", key="r_pass")
             r_pass2 = st.text_input("Repetir contraseña", type="password", key="r_pass2")
             if st.button("Crear cuenta", use_container_width=True):
+                import re
+                
+                def is_valid_email(email_str):
+                    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                    if not re.match(pattern, email_str):
+                        return False, "El formato del correo es inválido."
+                    
+                    blocked_words = ["admin", "root", "put", "mierda", "caca", "pene", "test", "fuck", "bitch", "shit", "ass", "cochinada"]
+                    email_lower = email_str.lower()
+                    for word in blocked_words:
+                        if word in email_lower:
+                            return False, f"El correo contiene términos no permitidos o reservados."
+                    return True, ""
+                
                 if r_email and r_pass and r_pass == r_pass2:
-                    with st.spinner("Creando cuenta en Firebase..."):
-                        res = firebase_register(r_email, r_pass)
-                        if "idToken" in res:
-                            st.session_state.user_logged_in = True
-                            st.session_state.user_email = res.get("email")
-                            st.session_state.firebase_id_token = res.get("idToken", "")
-                            # CARGAR CONFIGURACIÓN DESDE FIRESTORE (estará vacío pero inicializa)
-                            st.session_state.ai_config = {}
-                            st.query_params["user"] = st.session_state.user_email
-                            st.rerun()
-                        else:
-                            raw_error = res.get("error", {}).get("message", "Error desconocido")
-                            st.error(firebase_error_message(raw_error))
+                    is_valid, error_msg = is_valid_email(r_email)
+                    if not is_valid:
+                        st.error(error_msg)
+                    else:
+                        with st.spinner("Creando cuenta en Firebase..."):
+                            res = firebase_register(r_email, r_pass)
+                            if "idToken" in res:
+                                st.session_state.user_logged_in = True
+                                st.session_state.user_email = res.get("email")
+                                st.session_state.firebase_id_token = res.get("idToken", "")
+                                # CARGAR CONFIGURACIÓN DESDE FIRESTORE (estará vacío pero inicializa)
+                                st.session_state.ai_config = {}
+                                st.query_params["user"] = st.session_state.user_email
+                                st.rerun()
+                            else:
+                                raw_error = res.get("error", {}).get("message", "Error desconocido")
+                                st.error(firebase_error_message(raw_error))
                 elif r_pass != r_pass2:
                     st.warning("Las contraseñas no coinciden.")
                 else:
