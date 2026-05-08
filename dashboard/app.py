@@ -210,6 +210,20 @@ if "gemini_api_key" not in st.session_state:
 if "firebase_id_token" not in st.session_state:
     st.session_state.firebase_id_token = ""
 
+# Persistir usuario en query params para mantener sesión tras recarga
+try:
+    _params = st.query_params
+    _user_from_url = _params.get("user", "")
+except Exception:
+    _user_from_url = ""
+
+if _user_from_url and not st.session_state.get("user_logged_in"):
+    st.session_state.user_logged_in = True
+    st.session_state.user_email = _user_from_url
+    # La Gemini API key se recarga en el bloque posterior (tras definir firebase_load_settings)
+    st.session_state["_needs_key_reload"] = True
+
+
 # ── Configuración de Firebase ──────────────────────────────────────────────────
 # Se recomienda rotar esta clave en la consola de Firebase
 FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "").strip()
@@ -289,17 +303,26 @@ def firebase_save_settings(email, gemini_key):
 
 def firebase_load_settings(email):
     """Carga la API Key y la descifra para su uso en la sesión."""
-    doc_id = email.replace("@", "_at_").replace(".", "_dot_")
-    url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?key={FIREBASE_API_KEY}"
-    data = firebase_request("GET", url, headers=firebase_headers())
-    if "error" not in data:
-        encrypted_key = data.get("fields", {}).get("gemini_api_key", {}).get("stringValue", "")
-        # DESCIFRAR LA LLAVE PARA QUE EL AGENTE LA USE
-        return decrypt_data(encrypted_key)
+    try:
+        doc_id = email.replace("@", "_at_").replace(".", "_dot_")
+        url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?key={FIREBASE_API_KEY}"
+        data = firebase_request("GET", url, headers=firebase_headers())
+        if "error" not in data and "fields" in data:
+            encrypted_key = data.get("fields", {}).get("gemini_api_key", {}).get("stringValue", "")
+            # DESCIFRAR LA LLAVE PARA QUE EL AGENTE LA USE
+            return decrypt_data(encrypted_key)
+    except Exception as e:
+        print(f"⚠️ Error cargando configuración: {e}")
     return ""
 
 # ── Manejo de Código OAuth (ELIMINADO) ─────────────────────────────────────────
 # Se elimina por restricciones de Streamlit Cloud e iframe.
+
+# ── Recargar Gemini Key tras restauración de sesión desde URL ──────────────────
+if st.session_state.pop("_needs_key_reload", False):
+    _email_to_restore = st.session_state.get("user_email", "")
+    if _email_to_restore and not st.session_state.get("gemini_api_key"):
+        st.session_state.gemini_api_key = firebase_load_settings(_email_to_restore)
 
 # ── Pantalla de Login ─────────────────────────────────────────────────────────
 if not st.session_state.user_logged_in:
@@ -329,6 +352,8 @@ if not st.session_state.user_logged_in:
                             st.session_state.firebase_id_token = res.get("idToken", "")
                             # CARGAR CONFIGURACIÓN DESDE FIRESTORE
                             st.session_state.gemini_api_key = firebase_load_settings(res.get("email"))
+                            # Persistir usuario en la URL para mantener sesión tras recarga
+                            st.query_params["user"] = st.session_state.user_email
                             st.rerun()
                         else:
                             raw_error = res.get("error", {}).get("message", "Error desconocido")
@@ -350,6 +375,7 @@ if not st.session_state.user_logged_in:
                             st.session_state.firebase_id_token = res.get("idToken", "")
                             # CARGAR CONFIGURACIÓN DESDE FIRESTORE (estará vacío pero inicializa)
                             st.session_state.gemini_api_key = ""
+                            st.query_params["user"] = st.session_state.user_email
                             st.rerun()
                         else:
                             raw_error = res.get("error", {}).get("message", "Error desconocido")
@@ -366,6 +392,7 @@ if not st.session_state.user_logged_in:
             st.session_state.user_email = "invitado@qa-agent.local"
             st.session_state.is_guest = True
             st.session_state.gemini_api_key = "" # No tiene API Key guardada
+            st.query_params["user"] = st.session_state.user_email
             st.rerun()
 
         st.markdown("<div style='text-align:center; color:#64748b; font-size:0.85rem; letter-spacing:1px; margin-top:20px; margin-bottom:20px;'>PROTEGIDO POR FIREBASE</div>", unsafe_allow_html=True)
@@ -480,6 +507,13 @@ with st.sidebar:
         st.session_state.user_logged_in = False
         st.session_state.user_email = ""
         st.session_state.firebase_id_token = ""
+        st.session_state.gemini_api_key = ""
+        st.session_state.is_guest = False
+        # Limpiar el param de la URL para que no vuelva a restaurarse la sesión
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
         st.rerun()
     st.markdown("---")
 
@@ -566,7 +600,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Métricas ───────────────────────────────────────────────────────────────────
-results = load_all_results()
+user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+results = load_all_results(user_id=user_email)
 total   = len(results)
 passed  = sum(1 for r in results if r.get("status") == "PASS")
 failed  = total - passed
@@ -697,16 +732,25 @@ with tab_run:
 
                 final_name = test_name.strip() or f"Test: {full_prompt[:50]}"
                 with st.spinner("Ejecutando automatizacion..."):
-                    result = run_test(final_name, steps, test_type=test_type, headless=headless)
+                    try:
+                        result = run_test(final_name, steps, test_type=test_type, headless=headless)
+                    except Exception as e:
+                        result = {
+                            "test_name": final_name,
+                            "status": "FAIL",
+                            "steps": [],
+                            "error": f"Error durante la ejecución: {str(e)}"
+                        }
 
-                _save(result)
+                user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+                _save(result, user_id=user_email)
                 status = result.get("status")
                 if status == "PASS":
-                    st.success("Test completado: PASS")
+                    st.success("✅ Test completado: PASS")
                 else:
-                    st.error(f"Test fallo: {result.get('error','')}")
+                    st.error(f"❌ Test falló: {result.get('error','')}")
                 
-                with st.expander("Detalle de pasos"):
+                with st.expander(f"📋 Detalle de {len(result.get('steps', []))} pasos"):
                     render_steps(result.get("steps", []))
 
 
@@ -751,12 +795,18 @@ with tab_builder:
         if b_action in ("open_url", "open_app", "adb_open_app"):
             label = "URL" if b_action == "open_url" else ("Package Name" if b_action == "adb_open_app" else "Ruta/Nombre App")
             b_value = st.text_input(label, placeholder="https://... o notepad.exe", key="b_val_main")
-        
-        elif b_action in ("find_and_type", "type_text", "adb_type", "validate_text"):
-            if b_action == "find_and_type":
-                b_selector = st.text_input("Selector CSS", placeholder="input[type='email']", key="b_sel_web")
-            b_value = st.text_input("Texto a escribir/validar", placeholder="Hola mundo", key="b_val_text")
-        
+
+        elif b_action == "find_and_type":
+            b_selector = st.text_input("Selector CSS del campo", placeholder="input[type='email'], #username", key="b_sel_web")
+            b_value = st.text_input("Texto a escribir", placeholder="Hola mundo", key="b_val_text")
+
+        elif b_action == "validate_text":
+            b_selector = st.text_input("Selector CSS", placeholder="h1, .title, #msg", key="b_sel_vt")
+            b_value = st.text_input("Texto a validar (parcial)", placeholder="Bienvenido", key="b_val_text")
+
+        elif b_action == "validate_exists":
+            b_selector = st.text_input("Selector CSS a verificar", placeholder=".navbar, #header, button", key="b_sel_ve")
+
         elif b_action in ("click", "adb_tap", "adb_swipe"):
             placeholder = "x,y (ej: 500,400)" if b_action != "adb_swipe" else "x1,y1,x2,y2"
             b_selector = st.text_input("Coordenadas" if b_type != "web" else "Selector CSS", placeholder=placeholder, key="b_sel_coord")
@@ -766,11 +816,26 @@ with tab_builder:
             b_value = st.text_input(label, key="b_val_spec")
 
         if st.button("➕ Añadir paso", use_container_width=True):
-            step = {"action": b_action}
-            if b_selector: step["selector"] = b_selector
-            if b_value:    step["value"]    = b_value
-            st.session_state.custom_steps.append(step)
-            st.rerun()
+            # Validar que los campos requeridos no estén vacíos
+            if b_action == "open_url" and not b_value:
+                st.error("⚠️ La URL es requerida para 'Abrir URL'")
+            elif b_action == "find_and_type" and (not b_selector or not b_value):
+                st.error("⚠️ Selector CSS y texto son requeridos para 'Escribir en campo'")
+            elif b_action == "click" and not b_selector:
+                st.error("⚠️ Selector CSS es requerido para 'Hacer clic'")
+            elif b_action == "validate_text" and not b_selector:
+                st.error("⚠️ Selector CSS es requerido para 'Validar texto'")
+            elif b_action == "validate_url" and not b_value:
+                st.error("⚠️ URL es requerida para 'Validar URL actual'")
+            elif b_action == "validate_exists" and not b_selector:
+                st.error("⚠️ Selector CSS es requerido para 'Verificar que existe'")
+            else:
+                step = {"action": b_action}
+                if b_selector: step["selector"] = b_selector
+                if b_value:    step["value"]    = b_value
+                st.session_state.custom_steps.append(step)
+                st.success(f"✅ Paso '{b_action}' agregado ({len(st.session_state.custom_steps)} pasos)")
+                st.rerun()
 
         st.markdown("---")
         st.markdown("**3. Añadir pasos con IA**")
@@ -868,17 +933,25 @@ with tab_builder:
 
             name = b_test_name.strip() or f"Test Personalizado {datetime.now().strftime('%H:%M:%S')}"
             with st.spinner(f"🚀 Ejecutando test {b_run_type}..."):
-                result = run_test(name, custom_steps, test_type=b_run_type, headless=b_headless)
+                try:
+                    result = run_test(name, custom_steps, test_type=b_run_type, headless=b_headless)
+                except Exception as e:
+                    result = {
+                        "test_name": name,
+                        "status": "FAIL",
+                        "steps": [],
+                        "error": f"Error durante la ejecución: {str(e)}"
+                    }
 
-
-            _save(result)
+            user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+            _save(result, user_id=user_email)
             status = result.get("status")
             if status == "PASS":
                 st.success(f"🎉 {name} — PASS")
             else:
                 st.error(f"❌ {name} — FAIL: {result.get('error','')}")
 
-            with st.expander("📋 Detalle de pasos"):
+            with st.expander(f"📋 Detalle de {len(result.get('steps', []))} pasos"):
                 render_steps(result.get("steps", []))
 
 
@@ -888,7 +961,9 @@ with tab_builder:
 with tab_results:
     st.markdown('<div class="section-title">📊 Historial de resultados</div>', unsafe_allow_html=True)
 
-    results = load_all_results()
+    user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+    results = load_all_results(user_id=user_email)
+    total = len(results)  # Calcular total ANTES de usarlo
 
     if not results:
         st.info("🔍 No hay resultados aún. Ejecuta tu primer test en la pestaña **Ejecutar Test**.")
