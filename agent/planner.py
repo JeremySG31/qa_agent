@@ -116,8 +116,11 @@ def _plan_with_ai(prompt: str, api_key: str, model_name: str = "gemini-2.0-flash
         '[{"action": "open_url", "value": "<url>"}, '
         '{"action": "find_and_type", "selector": "<css_selector>", "value": "<texto>"}, '
         '{"action": "click", "selector": "<css_selector>"}, '
+        '{"action": "generate_email", "value": "<prefijo_opcional>"}, '
+        '{"action": "wait_for_email", "value": "<correo_opcional>"}, '
         '{"action": "validate_text", "selector": "<css_selector>", "value": "<texto esperado>"}] '
-        "Acciones permitidas: open_url, find_and_type, click, hover, press_key, select_option, scroll_to, validate_text, validate_url, validate_exists, wait, screenshot. "
+        "Acciones permitidas: open_url, find_and_type, click, hover, press_key, select_option, scroll_to, validate_text, validate_url, validate_exists, wait, screenshot, generate_email, wait_for_email. "
+        "Usa {{email}} en el campo 'value' de otras acciones para usar el correo generado. "
         "Usa selectores CSS reales y concretos."
     )
 

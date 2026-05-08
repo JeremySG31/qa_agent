@@ -5,7 +5,8 @@ Detecta el navegador predeterminado del sistema.
 
 Acciones soportadas:
   open_url, find_and_type, click, validate_text, validate_url, validate_exists,
-  wait, scroll_to, hover, press_key, select_option, screenshot
+  wait, scroll_to, hover, press_key, select_option, screenshot,
+  generate_email, wait_for_email
 """
 
 import time
@@ -21,6 +22,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     TimeoutException, NoSuchElementException, WebDriverException
 )
+from .domain_manager import SecureEmailManager
 
 try:
     from selenium.webdriver.edge.service import Service as EdgeService
@@ -117,15 +119,50 @@ def _build_driver(headless: bool = True):
     raise Exception("No se pudo iniciar ningun navegador compatible (Chrome/Edge).")
 
 
-def _execute_step(driver, step: dict, wait, screenshot_on_fail: bool = False) -> dict:
+def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: bool = False) -> dict:
     """Ejecuta un unico paso y devuelve un dict con el resultado."""
     action   = step.get("action", "")
     value    = step.get("value", "") or ""
     selector = step.get("selector", "") or ""
 
+    # Reemplazar placeholders en el valor (ej: {{email}})
+    if isinstance(value, str) and "{{" in value:
+        for k, v in context.items():
+            value = value.replace(f"{{{{{k}}}}}", str(v))
+
     result = {"action": action, "selector": selector, "value": value}
 
     try:
+        # ── Acciones de Correo y Dominio ────────────────────────────────────
+        if action == "generate_email":
+            if not SecureEmailManager:
+                raise Exception("Librería domain_manager no encontrada.")
+            mgr = SecureEmailManager()
+            email = mgr.create_account(prefix=value if value else None)
+            context["email"] = email
+            result["status"] = "ok"
+            result["detail"] = f"Correo generado: {email}"
+            result["email"] = email
+
+        elif action == "wait_for_email":
+            if not SecureEmailManager:
+                raise Exception("Librería domain_manager no encontrada.")
+            email_addr = value or context.get("email")
+            if not email_addr:
+                raise Exception("No se especificó dirección de correo ni hay una generada.")
+            
+            mgr = SecureEmailManager()
+            msg = mgr.wait_for_email(email_addr, timeout=30)
+            if msg:
+                context["last_email_subject"] = msg.get("subject")
+                context["last_email_body"] = msg.get("text")
+                result["status"] = "ok"
+                result["detail"] = f"Correo recibido: {msg.get('subject')}"
+                result["message"] = msg
+            else:
+                result["status"] = "error"
+                result["detail"] = "Timeout esperando correo."
+
         # ── Acciones de navegación ──────────────────────────────────────────
         if action == "open_url":
             if not value.startswith("http://") and not value.startswith("https://"):
@@ -300,9 +337,10 @@ def run_test(
         wait   = WebDriverWait(driver, timeout)
         _safe_print(f"Ejecutando: {test_name} ({len(steps)} pasos)")
 
+        test_context = {}
         for i, step in enumerate(steps, 1):
             _safe_print(f"   Paso {i}/{len(steps)}: {step.get('action')} ...")
-            result = _execute_step(driver, step, wait, screenshot_on_fail=screenshot_on_fail)
+            result = _execute_step(driver, step, wait, test_context, screenshot_on_fail=screenshot_on_fail)
             executed_steps.append(result)
             if result["status"] == "error":
                 overall_status = "FAIL"
@@ -360,10 +398,11 @@ def run_test_streaming(
 
         yield {"type": "start", "test_name": test_name, "total": len(steps), "headless": headless}
 
+        test_context = {}
         for i, step in enumerate(steps, 1):
             yield {"type": "step_start", "index": i, "total": len(steps), "step": step}
 
-            result = _execute_step(driver, step, wait, screenshot_on_fail=screenshot_on_fail)
+            result = _execute_step(driver, step, wait, test_context, screenshot_on_fail=screenshot_on_fail)
             executed_steps.append(result)
 
             if result["status"] == "error":
