@@ -914,6 +914,8 @@ with tab_builder:
             "validate_exists":"Verificar que existe",
             "wait":           "Esperar N segundos",
             "screenshot":     "Captura de pantalla",
+            "generate_email": "Generar correo seguro",
+            "wait_for_email": "Esperar correo",
         }
 
         b_action = st.selectbox("Accion", list(ACTIONS.keys()), format_func=lambda x: ACTIONS[x])
@@ -963,6 +965,12 @@ with tab_builder:
 
         elif b_action == "screenshot":
             b_value = ""  # Sin parametros adicionales
+
+        elif b_action == "generate_email":
+            b_value = st.text_input("Prefijo opcional (ej: user_test)", placeholder="Aleatorio si queda vacio", key="bv_ge")
+
+        elif b_action == "wait_for_email":
+            b_value = st.text_input("Correo a monitorear (opcional)", placeholder="Usa el último generado si queda vacio", key="bv_we")
 
         # Validacion y boton agregar
         REQUIRES_SEL = {"find_and_type","click","hover","scroll_to","select_option","validate_text","validate_exists"}
