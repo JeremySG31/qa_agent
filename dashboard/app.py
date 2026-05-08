@@ -81,6 +81,7 @@ html, body, [class*="css"] { font-family:'Syne',sans-serif; background:#0d0f14; 
   font-size: 3.5rem; 
   font-weight: 800; 
   line-height: 1.1; 
+  white-space: nowrap;
   background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -635,325 +636,381 @@ tab_run, tab_builder, tab_results = st.tabs([
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# TAB 1 · EJECUTAR TEST CON IA
+# TAB 1 - EJECUTAR TEST CON IA
 # ────────────────────────────────────────────────────────────────────────────
 with tab_run:
     st.markdown('<div class="section-title">Describe que quieres probar</div>', unsafe_allow_html=True)
 
     col_left, col_right = st.columns([3, 2])
-
     with col_left:
-        # Prompt preseleccionado desde sidebar
         default_prompt = st.session_state.pop("sidebar_prompt", "")
-        
-        is_ai_active = st.session_state.get("gemini_enabled", True) and st.session_state.get("gemini_api_key", "")
+        is_ai_active = bool(st.session_state.get("gemini_enabled") and st.session_state.get("gemini_api_key"))
 
         test_url = st.text_input(
-            "URL del sitio a probar" if is_ai_active else "URL a verificar (Modo Ping/Básico)",
-            placeholder="https://mi-sitio.com (vacio para demo)",
-            help="El agente usara esta URL como base para generar los pasos." if is_ai_active else "El agente solo abrirá esta URL para comprobar si está disponible."
+            "URL del sitio a probar" if is_ai_active else "URL a verificar (Modo Basico)",
+            placeholder="https://mi-sitio.com",
         )
 
         if is_ai_active:
             prompt = st.text_area(
-                "¿Qué quieres probar? (Lenguaje Natural con IA)",
+                "Que quieres probar? (Lenguaje Natural con IA)",
                 value=default_prompt,
-                placeholder='Ej: "prueba el formulario de login"',
+                placeholder='Ej: "prueba el formulario de login con usuario admin y clave test123"',
                 height=120,
             )
         else:
-            prompt = st.text_area(
+            prompt = ""
+            st.text_area(
                 "Lenguaje natural desactivado (IA Apagada)",
-                value=default_prompt,
                 placeholder='La Inteligencia Artificial está pausada. Ve a la pestaña "Constructor Visual" para pasos manuales.',
                 height=120,
                 disabled=True,
                 help="Sin IA, el sistema no puede interpretar lenguaje natural. Usa el Constructor Visual para pruebas complejas gratuitas."
             )
-            st.info("💡 **Consejo:** Para crear un test paso a paso sin gastar cuota de IA, dirígete a la pestaña superior **Constructor Visual**.")
+            st.info("💡 La IA está apagada. Configura tu **Gemini API Key** en el panel lateral o usa el **Constructor Visual**.")
 
-        test_name = st.text_input(
-            "Nombre del test (opcional)",
-            placeholder="Mi Test",
-        )
+
+        test_name = st.text_input("Nombre del test (opcional)", placeholder="Mi Test")
 
     with col_right:
         st.markdown("**Opciones de ejecucion**")
-        test_type = "web" # Simplificado a web por ahora
-
-
-        headless = st.checkbox(
-            "Modo headless (sin ventana)",
-            value=True,
-            help="Si desactivado, veras el navegador abrirse.",
-        )
-
-        preview_only = st.checkbox(
-            "Solo previsualizar plan (sin ejecutar)",
-            value=False,
-            help="Genera el plan sin lanzar el navegador.",
-        )
-
+        headless           = st.checkbox("Modo headless (sin ventana)", value=True)
+        preview_only       = st.checkbox("Solo previsualizar plan (sin ejecutar)", value=False)
+        st.markdown("**Ajustes avanzados**")
+        step_timeout       = st.select_slider("Timeout por elemento (seg)", options=[5, 10, 15, 20, 30], value=15)
+        step_delay         = st.select_slider("Pausa entre pasos (seg)",    options=[0.0, 0.3, 0.5, 1.0, 2.0], value=0.3)
+        screenshot_on_fail = st.checkbox("Captura de pantalla al fallar", value=False)
         st.markdown("")
         run_btn = st.button("Generar y Ejecutar Test", type="primary", use_container_width=True)
 
     st.markdown("---")
 
-    # Ejecutar 
     if run_btn:
         if not prompt.strip() and not test_url.strip():
             st.warning("Escribe un prompt o indica una URL.")
         else:
-            # Construir prompt con URL si se proporcionó
             full_prompt = prompt.strip() or "verifica disponibilidad"
             if test_url.strip():
-                full_prompt = f"{full_prompt} en {test_url.strip()}"
+                full_prompt = full_prompt + " en " + test_url.strip()
 
-            # 1. Generar plan
-            spinner_msg = "Generando plan con IA..." if st.session_state.gemini_enabled and st.session_state.gemini_api_key else "Generando plan básico..."
-            with st.spinner(spinner_msg):
-                active_api_key = st.session_state.gemini_api_key if st.session_state.gemini_enabled else ""
+            with st.spinner("Generando plan con IA..." if is_ai_active else "Generando plan basico..."):
+                active_key = st.session_state.gemini_api_key if st.session_state.gemini_enabled else ""
                 try:
-                    steps = generate_test_plan(full_prompt, api_key=active_api_key)
+                    steps = generate_test_plan(full_prompt, api_key=active_key)
                 except Exception as e:
                     st.error(str(e))
                     st.stop()
 
             st.session_state.plan_preview = steps
-
-            st.success(f"Plan generado: {len(steps)} pasos")
-            st.markdown("**Vista previa del plan:**")
+            n = len(steps)
+            st.markdown(
+                f'<div class="plan-preview"><div style="color:#22d3ee;font-weight:700;margin-bottom:8px;font-size:.9rem">Plan generado - {n} pasos</div>',
+                unsafe_allow_html=True)
             render_plan_preview(steps)
+            st.markdown("</div>", unsafe_allow_html=True)
 
             if not preview_only:
-
-                from agent.executor import run_test
+                from agent import executor_web
                 from agent.reporter import save_result as _save
+                final_name    = test_name.strip() or ("Test: " + full_prompt[:50])
+                result_holder = {}
 
-                final_name = test_name.strip() or f"Test: {full_prompt[:50]}"
-                with st.spinner("Ejecutando automatizacion..."):
-                    try:
-                        result = run_test(final_name, steps, test_type=test_type, headless=headless)
-                    except Exception as e:
-                        result = {
-                            "test_name": final_name,
-                            "status": "FAIL",
-                            "steps": [],
-                            "error": f"Error durante la ejecución: {str(e)}"
-                        }
+                with st.status("Ejecutando: " + final_name, expanded=True) as live_status:
+                    for event in executor_web.run_test_streaming(
+                        final_name, steps,
+                        headless=headless, timeout=step_timeout,
+                        step_delay=step_delay, screenshot_on_fail=screenshot_on_fail,
+                    ):
+                        et = event.get("type")
+                        if et == "start":
+                            mode = "headless" if headless else "ventana visible"
+                            total = event["total"]
+                            st.markdown(
+                                f'<span style="color:#64748b;font-family:JetBrains Mono,monospace;font-size:.8rem">Iniciando {mode} - {total} pasos</span>',
+                                unsafe_allow_html=True)
+                        elif et == "step_start":
+                            idx = event["index"]
+                            tot = event["total"]
+                            act = event["step"].get("action", "")
+                            st.markdown(
+                                f'<span style="color:#818cf8;font-family:JetBrains Mono,monospace;font-size:.78rem">Paso [{idx}/{tot}] {act}...</span>',
+                                unsafe_allow_html=True)
+                        elif et == "step_done":
+                            r   = event["result"]
+                            ok  = r["status"] == "ok"
+                            ic  = "ok" if ok else "x"
+                            css = "step-ok" if ok else "step-err"
+                            act = r.get("action", "")
+                            det = r.get("detail", "")
+                            st.markdown(
+                                f'<div class="step-item {css}"><span class="step-icon">{ic}</span>'
+                                f'<span class="step-text"><span class="step-action">[{act}]</span>{det}</span></div>',
+                                unsafe_allow_html=True)
+                        elif et == "driver_error":
+                            st.error(event["message"])
+                        elif et == "complete":
+                            result_holder.update(event)
 
-                user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
-                _save(result, user_id=user_email)
-                status = result.get("status")
-                if status == "PASS":
-                    st.success("✅ Test completado: PASS")
-                else:
-                    st.error(f"❌ Test falló: {result.get('error','')}")
-                
-                with st.expander(f"📋 Detalle de {len(result.get('steps', []))} pasos"):
-                    render_steps(result.get("steps", []))
+                    if result_holder.get("status") == "PASS":
+                        live_status.update(label="PASS - " + final_name, state="complete", expanded=False)
+                    else:
+                        err = result_holder.get("error", "")
+                        live_status.update(label="FAIL - " + err, state="error", expanded=True)
 
+                if result_holder:
+                    umail = st.session_state.get("user_email", "invitado@qa-agent.local")
+                    _save({
+                        "test_name": final_name,
+                        "status":    result_holder.get("status", "FAIL"),
+                        "steps":     result_holder.get("steps", []),
+                        "error":     result_holder.get("error", ""),
+                    }, user_id=umail)
 
     elif st.session_state.plan_preview:
-        st.markdown("**Último plan generado:**")
+        st.markdown("**Ultimo plan generado:**")
         render_plan_preview(st.session_state.plan_preview)
 
-
 # ────────────────────────────────────────────────────────────────────────────
-# TAB 2 · CONSTRUCTOR VISUAL (sin código)
+# TAB 2 - CONSTRUCTOR VISUAL
 # ────────────────────────────────────────────────────────────────────────────
 with tab_builder:
     st.markdown('<div class="section-title">Constructor visual de pasos</div>', unsafe_allow_html=True)
-    st.caption("Crea un test paso a paso sin escribir código. Cada acción se añade a la lista.")
+    st.caption("Crea un test paso a paso sin codigo. Incluye acciones avanzadas: hover, scroll, teclas, capturas y mas.")
 
     col_b1, col_b2 = st.columns([2, 3])
 
     with col_b1:
-        st.markdown("**1. Configurar Plataforma**")
-        b_type = st.selectbox("Plataforma", ["web"], key="b_type") # Limitado a web por ahora
-
-        st.markdown("**2. Añadir paso**")
-        
-        # Filtrar acciones según plataforma (Solo Web activa)
-        actions = {
-            "open_url":       "🌐 Abrir URL",
-            "find_and_type":  "⌨️ Escribir en campo",
-            "click":          "👆 Hacer clic",
-            "validate_text":  "🔍 Validar texto",
-            "validate_url":   "✅ Validar URL actual",
-            "validate_exists":"👁️ Verificar que existe",
+        st.markdown("**1. Anadir paso**")
+        ACTIONS = {
+            "open_url":       "Abrir URL",
+            "find_and_type":  "Escribir en campo",
+            "click":          "Hacer clic",
+            "hover":          "Hover sobre elemento",
+            "press_key":      "Presionar tecla",
+            "scroll_to":      "Scroll hasta elemento",
+            "select_option":  "Seleccionar opcion (dropdown)",
+            "validate_text":  "Validar texto",
+            "validate_url":   "Validar URL actual",
+            "validate_exists":"Verificar que existe",
+            "wait":           "Esperar N segundos",
+            "screenshot":     "Captura de pantalla",
         }
 
-        b_action = st.selectbox("Acción", list(actions.keys()), format_func=lambda x: actions[x])
+        b_action = st.selectbox("Accion", list(ACTIONS.keys()), format_func=lambda x: ACTIONS[x])
 
-
-        b_url = ""
         b_selector = ""
-        b_value = ""
+        b_value    = ""
 
-        # UI dinámica según la acción seleccionada
-        if b_action in ("open_url", "open_app", "adb_open_app"):
-            label = "URL" if b_action == "open_url" else ("Package Name" if b_action == "adb_open_app" else "Ruta/Nombre App")
-            b_value = st.text_input(label, placeholder="https://... o notepad.exe", key="b_val_main")
+        if b_action == "open_url":
+            b_value = st.text_input("URL", placeholder="https://mi-sitio.com", key="bv_url")
 
         elif b_action == "find_and_type":
-            b_selector = st.text_input("Selector CSS del campo", placeholder="input[type='email'], #username", key="b_sel_web")
-            b_value = st.text_input("Texto a escribir", placeholder="Hola mundo", key="b_val_text")
+            b_selector = st.text_input("Selector CSS del campo", placeholder="input[name='user'], #email", key="bs_ft")
+            b_value    = st.text_input("Texto a escribir", placeholder="admin", key="bv_ft")
+
+        elif b_action == "click":
+            b_selector = st.text_input("Selector CSS", placeholder="button[type='submit'], .btn-login", key="bs_cl")
+
+        elif b_action == "hover":
+            b_selector = st.text_input("Selector CSS", placeholder=".menu-item, nav a", key="bs_hv")
+
+        elif b_action == "press_key":
+            b_selector = st.text_input("Selector CSS (opcional, para enfocar)", placeholder="Dejar vacio para teclado global", key="bs_pk")
+            b_value    = st.selectbox("Tecla", ["enter","tab","escape","space","backspace","delete","up","down","left","right","home","end","pageup","pagedown"], key="bv_pk")
+
+        elif b_action == "scroll_to":
+            b_selector = st.text_input("Selector CSS del elemento destino", placeholder="#footer, .section-2", key="bs_sc")
+            if not b_selector:
+                b_value = st.text_input("O pixels a bajar (si no hay selector)", placeholder="500", key="bv_sc")
+
+        elif b_action == "select_option":
+            b_selector = st.text_input("Selector CSS del select", placeholder="select#pais, .dropdown", key="bs_so")
+            b_value    = st.text_input("Texto visible de la opcion", placeholder="Colombia", key="bv_so")
 
         elif b_action == "validate_text":
-            b_selector = st.text_input("Selector CSS", placeholder="h1, .title, #msg", key="b_sel_vt")
-            b_value = st.text_input("Texto a validar (parcial)", placeholder="Bienvenido", key="b_val_text")
+            b_selector = st.text_input("Selector CSS", placeholder="h1, .alert, #mensaje", key="bs_vt")
+            b_value    = st.text_input("Texto esperado (parcial)", placeholder="Bienvenido", key="bv_vt")
+
+        elif b_action == "validate_url":
+            b_value = st.text_input("URL parcial esperada", placeholder="dashboard, /home", key="bv_vu")
 
         elif b_action == "validate_exists":
-            b_selector = st.text_input("Selector CSS a verificar", placeholder=".navbar, #header, button", key="b_sel_ve")
+            b_selector = st.text_input("Selector CSS a verificar", placeholder=".navbar, #logo, button", key="bs_ve")
 
-        elif b_action in ("click", "adb_tap", "adb_swipe"):
-            placeholder = "x,y (ej: 500,400)" if b_action != "adb_swipe" else "x1,y1,x2,y2"
-            b_selector = st.text_input("Coordenadas" if b_type != "web" else "Selector CSS", placeholder=placeholder, key="b_sel_coord")
-        
-        elif b_action in ("press_key", "adb_keyevent", "wait", "validate_url"):
-            label = "Tecla (ej: enter, esc)" if "key" in b_action else ("Segundos" if b_action == "wait" else "URL parcial")
-            b_value = st.text_input(label, key="b_val_spec")
+        elif b_action == "wait":
+            b_value = st.select_slider("Segundos a esperar", options=[0.5, 1.0, 1.5, 2.0, 3.0, 5.0], value=1.0, key="bv_wt")
+            b_value = str(b_value)
 
-        if st.button("➕ Añadir paso", use_container_width=True):
-            # Validar que los campos requeridos no estén vacíos
-            if b_action == "open_url" and not b_value:
-                st.error("⚠️ La URL es requerida para 'Abrir URL'")
-            elif b_action == "find_and_type" and (not b_selector or not b_value):
-                st.error("⚠️ Selector CSS y texto son requeridos para 'Escribir en campo'")
-            elif b_action == "click" and not b_selector:
-                st.error("⚠️ Selector CSS es requerido para 'Hacer clic'")
-            elif b_action == "validate_text" and not b_selector:
-                st.error("⚠️ Selector CSS es requerido para 'Validar texto'")
-            elif b_action == "validate_url" and not b_value:
-                st.error("⚠️ URL es requerida para 'Validar URL actual'")
-            elif b_action == "validate_exists" and not b_selector:
-                st.error("⚠️ Selector CSS es requerido para 'Verificar que existe'")
+        elif b_action == "screenshot":
+            b_value = ""  # Sin parametros adicionales
+
+        # Validacion y boton agregar
+        REQUIRES_SEL = {"find_and_type","click","hover","scroll_to","select_option","validate_text","validate_exists"}
+        REQUIRES_VAL = {"open_url","find_and_type","select_option","validate_text","validate_url","wait"}
+
+        if st.button("Anadir paso", use_container_width=True):
+            err = None
+            if b_action in REQUIRES_SEL and not b_selector and b_action != "scroll_to":
+                err = "Selector CSS requerido para esta accion."
+            elif b_action in REQUIRES_VAL and not b_value and b_action not in ("scroll_to",):
+                err = "Valor/texto requerido para esta accion."
+            if err:
+                st.error(err)
             else:
                 step = {"action": b_action}
                 if b_selector: step["selector"] = b_selector
                 if b_value:    step["value"]    = b_value
                 st.session_state.custom_steps.append(step)
-                st.success(f"✅ Paso '{b_action}' agregado ({len(st.session_state.custom_steps)} pasos)")
+                st.success("Paso '" + b_action + "' agregado (" + str(len(st.session_state.custom_steps)) + " pasos)")
                 st.rerun()
 
         st.markdown("---")
-        st.markdown("**3. Añadir pasos con IA**")
-        is_ai_active = st.session_state.get("gemini_enabled", True) and st.session_state.get("gemini_api_key", "")
-        
-        if is_ai_active:
-            ai_step_prompt = st.text_area("¿Qué acción deseas añadir? (Lenguaje Natural)", placeholder="Ej: escribe 'admin' en el campo de usuario y dale al botón enviar", height=80, key="ai_step_prompt")
-            if st.button("✨ Generar paso con IA", use_container_width=True):
-                if ai_step_prompt.strip():
-                    with st.spinner("Interpretando acción..."):
-                        from agent.planner import generate_test_plan
+        st.markdown("**2. Anadir pasos con IA**")
+        is_ai = bool(st.session_state.get("gemini_enabled") and st.session_state.get("gemini_api_key"))
+        if is_ai:
+            ai_p = st.text_area("Describe la accion en lenguaje natural", placeholder="Ej: escribe 'admin' en el campo usuario y pulsa Enter", height=80, key="ai_step_prompt")
+            if st.button("Generar paso con IA", use_container_width=True):
+                if ai_p.strip():
+                    with st.spinner("Interpretando accion..."):
                         try:
-                            new_steps = generate_test_plan(ai_step_prompt, api_key=st.session_state.gemini_api_key)
+                            new_steps = generate_test_plan(ai_p, api_key=st.session_state.gemini_api_key)
                             if new_steps:
                                 st.session_state.custom_steps.extend(new_steps)
                                 st.rerun()
                         except Exception as e:
                             st.error(str(e))
                 else:
-                    st.warning("Escribe una instrucción primero.")
+                    st.warning("Escribe una instruccion primero.")
         else:
-            st.text_area(
-                "Lenguaje natural desactivado",
-                placeholder="Activa la IA en el menú lateral para añadir pasos automáticamente.",
-                height=80,
-                disabled=True,
-                key="ai_step_prompt_disabled",
-                help="La Inteligencia Artificial está pausada."
-            )
+            st.text_area("IA desactivada", placeholder="Activa tu Gemini API Key en el panel lateral.", height=60, disabled=True, key="ai_step_disabled")
 
         st.markdown("---")
-        b_test_name = st.text_input("🏷️ Nombre del test", placeholder="Mi Test Personalizado", key="b_name")
-        b_run_type = b_type # Usar la plataforma seleccionada arriba
-        b_headless  = st.checkbox("🫥 Headless (solo web)", value=True, key="b_headless")
+        b_test_name = st.text_input("Nombre del test", placeholder="Mi Test Personalizado", key="b_name")
+        b_headless  = st.checkbox("Headless (sin ventana)", value=True, key="b_headless")
+        st.markdown("**Ajustes de ejecucion**")
+        b_timeout  = st.select_slider("Timeout (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
+        b_delay    = st.select_slider("Pausa entre pasos", options=[0.0,0.3,0.5,1.0,2.0], value=0.3, key="b_delay")
+        b_ss_fail  = st.checkbox("Captura al fallar", value=False, key="b_ss_fail")
 
-
-
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            if st.button("🗑️ Limpiar pasos", use_container_width=True):
+        cr1, cr2 = st.columns(2)
+        with cr1:
+            if st.button("Limpiar pasos", use_container_width=True):
                 st.session_state.custom_steps = []
                 st.rerun()
-        with col_r2:
-            run_custom = st.button("▶ Ejecutar", type="primary", use_container_width=True)
+        with cr2:
+            run_custom = st.button("Ejecutar", type="primary", use_container_width=True)
 
     with col_b2:
         st.markdown("**Pasos del test**")
         custom_steps = st.session_state.custom_steps
 
         if not custom_steps:
-            st.info("No hay pasos aún. Añade acciones desde el panel izquierdo.")
+            st.markdown(
+                '<div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;'
+                'padding:30px;text-align:center;color:#475569;">'
+                '<div style="font-size:2rem;margin-bottom:8px">+</div>'
+                '<div>No hay pasos aun. Anade acciones desde el panel izquierdo.</div>'
+                '</div>',
+                unsafe_allow_html=True)
+
         else:
             for i, s in enumerate(custom_steps):
-                c_del, c_info = st.columns([1, 8])
+                act    = s.get("action","")
+                val    = s.get("value","")
+                sel    = s.get("selector","")
+                detail = val if val else sel
+                c_num, c_info, c_up, c_dn, c_del = st.columns([0.5, 6, 0.6, 0.6, 0.6])
+                with c_num:
+                    st.markdown(f"<div style='color:#818cf8;font-family:JetBrains Mono,monospace;font-size:.85rem;padding-top:8px;'>{i+1}</div>", unsafe_allow_html=True)
+                with c_info:
+                    st.markdown(
+                        f'<div class="plan-step" style="border-bottom:none;padding:4px 0;">'
+                        f'<span class="plan-act">[{act}]</span>'
+                        f'<span style="color:#94a3b8">{detail}</span></div>',
+                        unsafe_allow_html=True)
+                with c_up:
+                    if i > 0 and st.button("up", key=f"up_{i}", help="Subir"):
+                        custom_steps[i-1], custom_steps[i] = custom_steps[i], custom_steps[i-1]
+                        st.rerun()
+                with c_dn:
+                    if i < len(custom_steps)-1 and st.button("dn", key=f"dn_{i}", help="Bajar"):
+                        custom_steps[i], custom_steps[i+1] = custom_steps[i+1], custom_steps[i]
+                        st.rerun()
                 with c_del:
-                    if st.button("✕", key=f"del_{i}", help="Eliminar paso"):
+                    if st.button("x", key=f"del_{i}", help="Eliminar"):
                         st.session_state.custom_steps.pop(i)
                         st.rerun()
-                with c_info:
-                    action = s.get("action", "")
-                    val    = s.get("value", "")
-                    sel    = s.get("selector", "")
-                    detail = val if val else sel
-                    st.markdown(f"""
-                    <div class="plan-step" style="border-bottom:none;padding:4px 0;">
-                      <span class="plan-num">{i+1}.</span>
-                      <span class="plan-act">[{action}]</span>
-                      <span style="color:#94a3b8">{detail}</span>
-                    </div>""", unsafe_allow_html=True)
 
-            # Importar/exportar como JSON
             st.markdown("---")
-            with st.expander("📤 Exportar / Importar pasos (JSON)"):
+            with st.expander("Exportar / Importar pasos (JSON)"):
                 st.code(json.dumps(custom_steps, indent=2, ensure_ascii=False), language="json")
-                imported = st.text_area("Pega JSON aquí para importar", height=120, key="import_json")
-                if st.button("📥 Importar pasos"):
+                imported = st.text_area("Pega JSON aqui para importar", height=120, key="import_json")
+                if st.button("Importar pasos"):
                     try:
                         parsed = json.loads(imported)
                         if isinstance(parsed, list):
                             st.session_state.custom_steps = parsed
-                            st.success(f"✅ {len(parsed)} pasos importados.")
+                            st.success(str(len(parsed)) + " pasos importados.")
                             st.rerun()
                         else:
                             st.error("El JSON debe ser una lista de pasos.")
                     except json.JSONDecodeError as e:
-                        st.error(f"JSON inválido: {e}")
+                        st.error("JSON invalido: " + str(e))
 
-    # ── Ejecutar test personalizado ────────────────────────────────
+    # Ejecucion con streaming
     if run_custom:
         if not custom_steps:
-            st.warning("Añade al menos un paso primero.")
+            st.warning("Anade al menos un paso primero.")
         else:
-            from agent.executor import run_test
+            from agent import executor_web
             from agent.reporter import save_result as _save
+            name = b_test_name.strip() or ("Test Personalizado " + datetime.now().strftime("%H:%M:%S"))
+            result_holder = {}
 
-            name = b_test_name.strip() or f"Test Personalizado {datetime.now().strftime('%H:%M:%S')}"
-            with st.spinner(f"🚀 Ejecutando test {b_run_type}..."):
-                try:
-                    result = run_test(name, custom_steps, test_type=b_run_type, headless=b_headless)
-                except Exception as e:
-                    result = {
-                        "test_name": name,
-                        "status": "FAIL",
-                        "steps": [],
-                        "error": f"Error durante la ejecución: {str(e)}"
-                    }
+            with st.status("Ejecutando: " + name, expanded=True) as live_status:
+                for event in executor_web.run_test_streaming(
+                    name, custom_steps,
+                    headless=b_headless, timeout=b_timeout,
+                    step_delay=b_delay, screenshot_on_fail=b_ss_fail,
+                ):
+                    et = event.get("type")
+                    if et == "start":
+                        mode = "headless" if b_headless else "ventana visible"
+                        st.markdown(f'<span style="color:#64748b;font-family:JetBrains Mono,monospace;font-size:.8rem">Iniciando {mode} - {event["total"]} pasos</span>', unsafe_allow_html=True)
+                    elif et == "step_start":
+                        idx = event["index"]
+                        tot = event["total"]
+                        act = event["step"].get("action","")
+                        st.markdown(f'<span style="color:#818cf8;font-family:JetBrains Mono,monospace;font-size:.78rem">Paso [{idx}/{tot}] {act}...</span>', unsafe_allow_html=True)
+                    elif et == "step_done":
+                        r   = event["result"]
+                        ok  = r["status"] == "ok"
+                        css = "step-ok" if ok else "step-err"
+                        act = r.get("action","")
+                        det = r.get("detail","")
+                        st.markdown(
+                            f'<div class="step-item {css}"><span class="step-icon">{"ok" if ok else "x"}</span>'
+                            f'<span class="step-text"><span class="step-action">[{act}]</span>{det}</span></div>',
+                            unsafe_allow_html=True)
+                    elif et == "driver_error":
+                        st.error(event["message"])
+                    elif et == "complete":
+                        result_holder.update(event)
 
-            user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
-            _save(result, user_id=user_email)
-            status = result.get("status")
-            if status == "PASS":
-                st.success(f"🎉 {name} — PASS")
-            else:
-                st.error(f"❌ {name} — FAIL: {result.get('error','')}")
+                if result_holder.get("status") == "PASS":
+                    live_status.update(label="PASS - " + name, state="complete", expanded=False)
+                else:
+                    err = result_holder.get("error","")
+                    live_status.update(label="FAIL - " + err, state="error", expanded=True)
 
-            with st.expander(f"📋 Detalle de {len(result.get('steps', []))} pasos"):
-                render_steps(result.get("steps", []))
-
+            if result_holder:
+                umail = st.session_state.get("user_email","invitado@qa-agent.local")
+                _save({
+                    "test_name": name,
+                    "status":    result_holder.get("status","FAIL"),
+                    "steps":     result_holder.get("steps",[]),
+                    "error":     result_holder.get("error",""),
+                }, user_id=umail)
 
 # ────────────────────────────────────────────────────────────────────────────
 # TAB 3 · HISTORIAL DE RESULTADOS

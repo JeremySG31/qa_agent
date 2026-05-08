@@ -2,14 +2,21 @@
 executor_web.py - Modulo de ejecucion web con Selenium
 Toma los pasos generados por el planner y los ejecuta en el navegador.
 Detecta el navegador predeterminado del sistema.
+
+Acciones soportadas:
+  open_url, find_and_type, click, validate_text, validate_url, validate_exists,
+  wait, scroll_to, hover, press_key, select_option, screenshot
 """
 
 import time
+from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     TimeoutException, NoSuchElementException, WebDriverException
@@ -31,6 +38,15 @@ except ImportError:
 
 
 WAIT_TIMEOUT = 15
+SCREENSHOTS_DIR = Path(__file__).parent.parent / "results" / "screenshots"
+
+KEY_MAP = {
+    "enter": Keys.ENTER, "tab": Keys.TAB, "escape": Keys.ESCAPE,
+    "esc": Keys.ESCAPE, "space": Keys.SPACE, "backspace": Keys.BACKSPACE,
+    "delete": Keys.DELETE, "up": Keys.ARROW_UP, "down": Keys.ARROW_DOWN,
+    "left": Keys.ARROW_LEFT, "right": Keys.ARROW_RIGHT, "home": Keys.HOME,
+    "end": Keys.END, "pageup": Keys.PAGE_UP, "pagedown": Keys.PAGE_DOWN,
+}
 
 
 def _safe_print(*args, **kwargs):
@@ -63,7 +79,6 @@ def _get_default_browser():
 def _build_driver(headless: bool = True):
     """Intenta iniciar el navegador predeterminado del sistema."""
     default = _get_default_browser()
-
     browsers_to_try = [default]
     for b in ["chrome", "edge"]:
         if b not in browsers_to_try:
@@ -75,12 +90,14 @@ def _build_driver(headless: bool = True):
                 options = ChromeOptions()
                 if headless: options.add_argument("--headless=new")
                 options.add_argument("--log-level=3")
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-dev-shm-usage")
                 if CHROME_MANAGER_AVAILABLE:
                     service = ChromeService(ChromeDriverManager().install())
                     driver = webdriver.Chrome(service=service, options=options)
                 else:
                     driver = webdriver.Chrome(options=options)
-                _safe_print(f"Navegador: Google Chrome")
+                _safe_print("Navegador: Google Chrome")
                 return driver
 
             elif browser == "edge":
@@ -92,7 +109,7 @@ def _build_driver(headless: bool = True):
                     driver = webdriver.Edge(service=service, options=options)
                 else:
                     driver = webdriver.Edge(options=options)
-                _safe_print(f"Navegador: Microsoft Edge")
+                _safe_print("Navegador: Microsoft Edge")
                 return driver
         except Exception as e:
             _safe_print(f"No se pudo iniciar {browser}: {e}")
@@ -100,15 +117,16 @@ def _build_driver(headless: bool = True):
     raise Exception("No se pudo iniciar ningun navegador compatible (Chrome/Edge).")
 
 
-def _execute_step(driver, step: dict, wait) -> dict:
+def _execute_step(driver, step: dict, wait, screenshot_on_fail: bool = False) -> dict:
     """Ejecuta un unico paso y devuelve un dict con el resultado."""
     action   = step.get("action", "")
-    value    = step.get("value", "")
-    selector = step.get("selector", "")
+    value    = step.get("value", "") or ""
+    selector = step.get("selector", "") or ""
 
     result = {"action": action, "selector": selector, "value": value}
 
     try:
+        # ── Acciones de navegación ──────────────────────────────────────────
         if action == "open_url":
             if not value.startswith("http://") and not value.startswith("https://"):
                 value = "https://" + value
@@ -116,6 +134,7 @@ def _execute_step(driver, step: dict, wait) -> dict:
             result["status"] = "ok"
             result["detail"] = f"Abrio: {value}"
 
+        # ── Interacción con elementos ───────────────────────────────────────
         elif action == "find_and_type":
             element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
             element.clear()
@@ -129,6 +148,53 @@ def _execute_step(driver, step: dict, wait) -> dict:
             result["status"] = "ok"
             result["detail"] = f"Hizo clic en '{selector}'"
 
+        elif action == "hover":
+            element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+            ActionChains(driver).move_to_element(element).perform()
+            time.sleep(0.3)
+            result["status"] = "ok"
+            result["detail"] = f"Hover sobre '{selector}'"
+
+        elif action == "press_key":
+            key = KEY_MAP.get(value.lower().strip(), value)
+            if selector:
+                element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                element.send_keys(key)
+            else:
+                ActionChains(driver).send_keys(key).perform()
+            result["status"] = "ok"
+            result["detail"] = f"Tecla '{value}' presionada" + (f" en '{selector}'" if selector else "")
+
+        elif action == "select_option":
+            element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+            sel_obj = Select(element)
+            try:
+                sel_obj.select_by_visible_text(value)
+            except Exception:
+                sel_obj.select_by_value(value)
+            result["status"] = "ok"
+            result["detail"] = f"Seleccionado '{value}' en '{selector}'"
+
+        # ── Scroll ──────────────────────────────────────────────────────────
+        elif action == "scroll_to":
+            if selector:
+                element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                driver.execute_script("arguments[0].scrollIntoView({behavior:'smooth',block:'center'});", element)
+            else:
+                pixels = int(value) if value else 500
+                driver.execute_script(f"window.scrollBy(0, {pixels});")
+            time.sleep(0.4)
+            result["status"] = "ok"
+            result["detail"] = f"Scroll hasta '{selector or value}'"
+
+        # ── Espera ──────────────────────────────────────────────────────────
+        elif action == "wait":
+            secs = float(value) if value else 1.0
+            time.sleep(secs)
+            result["status"] = "ok"
+            result["detail"] = f"Esperó {secs}s"
+
+        # ── Validaciones ────────────────────────────────────────────────────
         elif action == "validate_text":
             element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
             actual_text = element.text
@@ -140,7 +206,7 @@ def _execute_step(driver, step: dict, wait) -> dict:
                 result["detail"] = f"Esperado: '{value}' | Encontrado: '{actual_text[:100]}'"
 
         elif action == "validate_url":
-            time.sleep(1.5)
+            time.sleep(1.0)
             current_url = driver.current_url
             if value.lower() in current_url.lower():
                 result["status"] = "ok"
@@ -167,13 +233,23 @@ def _execute_step(driver, step: dict, wait) -> dict:
                 result["status"] = "error"
                 result["detail"] = f"Ningun selector encontrado: '{selector}'"
 
+        # ── Captura ─────────────────────────────────────────────────────────
+        elif action == "screenshot":
+            SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+            fname = f"screenshot_{int(time.time())}.png"
+            fpath = str(SCREENSHOTS_DIR / fname)
+            driver.save_screenshot(fpath)
+            result["status"] = "ok"
+            result["detail"] = f"Screenshot: {fname}"
+            result["screenshot_path"] = fpath
+
         else:
             result["status"] = "error"
             result["detail"] = f"Accion desconocida: '{action}'"
 
     except TimeoutException:
         result["status"] = "error"
-        result["detail"] = f"Timeout: elemento '{selector}' no encontrado en {WAIT_TIMEOUT}s"
+        result["detail"] = f"Timeout: elemento '{selector}' no encontrado"
     except NoSuchElementException:
         result["status"] = "error"
         result["detail"] = f"Elemento no encontrado: '{selector}'"
@@ -181,29 +257,53 @@ def _execute_step(driver, step: dict, wait) -> dict:
         msg = str(e).split('\n')[0]
         result["status"] = "error"
         result["detail"] = f"WebDriver error: {msg}"
+    except Exception as e:
+        result["status"] = "error"
+        result["detail"] = f"Error inesperado: {str(e)[:120]}"
 
-    time.sleep(0.5)
+    # Captura automática en fallo si está habilitada
+    if result.get("status") == "error" and screenshot_on_fail:
+        try:
+            SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+            fname = f"fail_{action}_{int(time.time())}.png"
+            driver.save_screenshot(str(SCREENSHOTS_DIR / fname))
+            result["screenshot_path"] = str(SCREENSHOTS_DIR / fname)
+        except Exception:
+            pass
+
     return result
 
 
-def run_test(test_name: str, steps: list[dict], headless: bool = True) -> dict:
+# ══════════════════════════════════════════════════════════════════════════════
+# EJECUCIÓN CLÁSICA (bloqueante)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def run_test(
+    test_name: str,
+    steps: list[dict],
+    headless: bool = True,
+    timeout: int = 15,
+    step_delay: float = 0.3,
+    screenshot_on_fail: bool = False,
+) -> dict:
     """Ejecuta todos los pasos de una prueba web y devuelve el reporte."""
     driver = None
     executed_steps = []
     overall_status = "PASS"
     first_error = ""
 
+    global WAIT_TIMEOUT
+    WAIT_TIMEOUT = timeout
+
     try:
         driver = _build_driver(headless=headless)
-        wait   = WebDriverWait(driver, WAIT_TIMEOUT)
-
+        wait   = WebDriverWait(driver, timeout)
         _safe_print(f"Ejecutando: {test_name} ({len(steps)} pasos)")
 
         for i, step in enumerate(steps, 1):
             _safe_print(f"   Paso {i}/{len(steps)}: {step.get('action')} ...")
-            result = _execute_step(driver, step, wait)
+            result = _execute_step(driver, step, wait, screenshot_on_fail=screenshot_on_fail)
             executed_steps.append(result)
-
             if result["status"] == "error":
                 overall_status = "FAIL"
                 if not first_error:
@@ -211,17 +311,81 @@ def run_test(test_name: str, steps: list[dict], headless: bool = True) -> dict:
                 _safe_print(f"   Error: {result['detail']}")
             else:
                 _safe_print(f"   OK: {result['detail']}")
+            if step_delay > 0:
+                time.sleep(step_delay)
 
     except Exception as e:
         overall_status = "FAIL"
         first_error = f"Error al iniciar driver: {str(e)}"
         _safe_print(f"Error fatal: {first_error}")
-
     finally:
         if driver:
             driver.quit()
 
     return {
+        "test_name": test_name,
+        "status":    overall_status,
+        "steps":     executed_steps,
+        "error":     first_error,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EJECUCIÓN STREAMING (genera eventos en tiempo real para la UI)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def run_test_streaming(
+    test_name: str,
+    steps: list[dict],
+    headless: bool = True,
+    timeout: int = 15,
+    step_delay: float = 0.3,
+    screenshot_on_fail: bool = False,
+):
+    """
+    Generator que yield-ea eventos en tiempo real conforme avanza el test.
+    Eventos: start | step_start | step_done | driver_error | complete
+    """
+    driver = None
+    executed_steps = []
+    overall_status = "PASS"
+    first_error = ""
+
+    global WAIT_TIMEOUT
+    WAIT_TIMEOUT = timeout
+
+    try:
+        driver = _build_driver(headless=headless)
+        wait   = WebDriverWait(driver, timeout)
+
+        yield {"type": "start", "test_name": test_name, "total": len(steps), "headless": headless}
+
+        for i, step in enumerate(steps, 1):
+            yield {"type": "step_start", "index": i, "total": len(steps), "step": step}
+
+            result = _execute_step(driver, step, wait, screenshot_on_fail=screenshot_on_fail)
+            executed_steps.append(result)
+
+            if result["status"] == "error":
+                overall_status = "FAIL"
+                if not first_error:
+                    first_error = result["detail"]
+
+            yield {"type": "step_done", "index": i, "total": len(steps), "result": result}
+
+            if step_delay > 0:
+                time.sleep(step_delay)
+
+    except Exception as e:
+        overall_status = "FAIL"
+        first_error = f"Error al iniciar driver: {str(e)}"
+        yield {"type": "driver_error", "message": first_error}
+    finally:
+        if driver:
+            driver.quit()
+
+    yield {
+        "type": "complete",
         "test_name": test_name,
         "status":    overall_status,
         "steps":     executed_steps,

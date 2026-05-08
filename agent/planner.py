@@ -37,7 +37,6 @@ except ImportError:
     except ImportError:
         pass
 
-
 DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
 
 
@@ -131,9 +130,10 @@ def _plan_with_gemini(prompt: str, api_key: str) -> list[dict]:
         )
         raw = response.text.strip()
     else:
-        # API deprecada: google.generativeai
+        # API deprecada: google.generativeai (v1beta tiene problemas con gemini-1.5-flash)
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name)
+        safe_model = "gemini-pro" if "1.5" in model_name else model_name
+        model = genai.GenerativeModel(safe_model)
         response = model.generate_content(full_prompt)
         raw = response.text.strip()
 
