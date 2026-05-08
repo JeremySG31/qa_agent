@@ -59,17 +59,18 @@ html, body, [class*="css"] { font-family:'Syne',sans-serif; background:#0d0f14; 
   border: 1px solid #38bdf840;
   border-top: 1px solid #38bdf880;
   border-radius: 16px;
-  padding: 24px 20px;
+  padding: 24px 10px;
   text-align: center;
   box-shadow: 0 10px 30px -5px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255,255,255,0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 .metric-box::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100%;
   background: radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 60%);
   pointer-events: none;
+  border-radius: 16px;
 }
 .metric-box:hover {
   transform: translateY(-5px);
@@ -78,7 +79,7 @@ html, body, [class*="css"] { font-family:'Syne',sans-serif; background:#0d0f14; 
 }
 .metric-value { 
   font-family: 'Syne', sans-serif; 
-  font-size: 3.5rem; 
+  font-size: clamp(1.8rem, 3vw, 2.8rem); 
   font-weight: 800; 
   line-height: 1.1; 
   white-space: nowrap;
@@ -202,12 +203,12 @@ if "active_tab" not in st.session_state:
     st.session_state.active_tab = 0
 if "user_logged_in" not in st.session_state:
     st.session_state.user_logged_in = False
-if "gemini_enabled" not in st.session_state:
-    st.session_state.gemini_enabled = False
+if "ai_enabled" not in st.session_state:
+    st.session_state.ai_enabled = False
 if "key_version" not in st.session_state:
     st.session_state.key_version = 0
-if "gemini_api_key" not in st.session_state:
-    st.session_state.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+if "ai_config" not in st.session_state:
+    st.session_state.ai_config = {"provider": "Google Gemini", "api_key": os.getenv("GEMINI_API_KEY", "").strip(), "model": "gemini-2.0-flash", "base_url": ""}
 if "firebase_id_token" not in st.session_state:
     st.session_state.firebase_id_token = ""
 
@@ -284,37 +285,49 @@ def firebase_register(email, password):
     return firebase_request("POST", url, json={"email": email, "password": password, "returnSecureToken": True})
 
 
-def firebase_save_settings(email, gemini_key):
-    """Cifra la API Key y la guarda directamente en Firestore."""
-    # Sanitizar email para el ID del documento
+def firebase_save_settings(email, ai_config):
+    """Cifra la configuracion de IA (dict) y la guarda como JSON en Firestore."""
+    import json
     doc_id = email.replace("@", "_at_").replace(".", "_dot_")
-    url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?updateMask.fieldPaths=gemini_api_key&key={FIREBASE_API_KEY}"
+    url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?updateMask.fieldPaths=ai_config&key={FIREBASE_API_KEY}"
     
-    # CIFRAR LA LLAVE ANTES DE ENVIARLA
-    encrypted_key = encrypt_data(gemini_key)
+    config_json = json.dumps(ai_config)
+    encrypted_config = encrypt_data(config_json)
     
     payload = {
         "fields": {
-            "gemini_api_key": {"stringValue": encrypted_key}
+            "ai_config": {"stringValue": encrypted_config}
         }
     }
-    # Usar patch para crear o actualizar el documento
     return firebase_request("PATCH", url, json=payload, headers=firebase_headers())
 
-
 def firebase_load_settings(email):
-    """Carga la API Key y la descifra para su uso en la sesión."""
+    """Carga la configuracion de IA y la descifra para su uso en la sesion."""
+    import json
     try:
         doc_id = email.replace("@", "_at_").replace(".", "_dot_")
         url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?key={FIREBASE_API_KEY}"
         data = firebase_request("GET", url, headers=firebase_headers())
         if "error" not in data and "fields" in data:
-            encrypted_key = data.get("fields", {}).get("gemini_api_key", {}).get("stringValue", "")
-            # DESCIFRAR LA LLAVE PARA QUE EL AGENTE LA USE
-            return decrypt_data(encrypted_key)
+            # Intentar cargar la nueva ai_config
+            if "ai_config" in data.get("fields", {}):
+                encrypted_config = data["fields"]["ai_config"].get("stringValue", "")
+                decrypted = decrypt_data(encrypted_config)
+                return json.loads(decrypted)
+                
+            # Retrocompatibilidad con la antigua gemini_api_key
+            if "gemini_api_key" in data.get("fields", {}):
+                encrypted_key = data["fields"]["gemini_api_key"].get("stringValue", "")
+                decrypted_key = decrypt_data(encrypted_key)
+                return {
+                    "provider": "Google Gemini",
+                    "api_key": decrypted_key,
+                    "model": "gemini-2.0-flash",
+                    "base_url": ""
+                }
     except Exception as e:
-        print(f"⚠️ Error cargando configuración: {e}")
-    return ""
+        print(f"⚠️ Error cargando configuracion: {e}")
+    return {}
 
 # ── Manejo de Código OAuth (ELIMINADO) ─────────────────────────────────────────
 # Se elimina por restricciones de Streamlit Cloud e iframe.
@@ -322,8 +335,8 @@ def firebase_load_settings(email):
 # ── Recargar Gemini Key tras restauración de sesión desde URL ──────────────────
 if st.session_state.pop("_needs_key_reload", False):
     _email_to_restore = st.session_state.get("user_email", "")
-    if _email_to_restore and not st.session_state.get("gemini_api_key"):
-        st.session_state.gemini_api_key = firebase_load_settings(_email_to_restore)
+    if _email_to_restore and not st.session_state.get("ai_config", {}).get("api_key"):
+        st.session_state.ai_config = firebase_load_settings(_email_to_restore)
 
 # ── Pantalla de Login ─────────────────────────────────────────────────────────
 if not st.session_state.user_logged_in:
@@ -375,7 +388,7 @@ if not st.session_state.user_logged_in:
                             st.session_state.user_email = res.get("email")
                             st.session_state.firebase_id_token = res.get("idToken", "")
                             # CARGAR CONFIGURACIÓN DESDE FIRESTORE (estará vacío pero inicializa)
-                            st.session_state.gemini_api_key = ""
+                            st.session_state.ai_config = {}
                             st.query_params["user"] = st.session_state.user_email
                             st.rerun()
                         else:
@@ -392,7 +405,7 @@ if not st.session_state.user_logged_in:
             st.session_state.user_logged_in = True
             st.session_state.user_email = "invitado@qa-agent.local"
             st.session_state.is_guest = True
-            st.session_state.gemini_api_key = "" # No tiene API Key guardada
+            st.session_state.ai_config = {} # No tiene API Key guardada
             st.query_params["user"] = st.session_state.user_email
             st.rerun()
 
@@ -508,7 +521,7 @@ with st.sidebar:
         st.session_state.user_logged_in = False
         st.session_state.user_email = ""
         st.session_state.firebase_id_token = ""
-        st.session_state.gemini_api_key = ""
+        st.session_state.ai_config = {}
         st.session_state.is_guest = False
         # Limpiar el param de la URL para que no vuelva a restaurarse la sesión
         try:
@@ -520,19 +533,67 @@ with st.sidebar:
 
     # ── Configuración de IA ────────────────────────────────────────
     with st.expander("Configuracion de IA", expanded=False):
-        st.toggle("Activar Inteligencia Artificial", value=False, key="gemini_enabled", help="Apágalo para no consumir la cuota de tu API.")
+        st.toggle("Activar Inteligencia Artificial", value=False, key="ai_enabled", help="Apágalo para no consumir la cuota de tu API.")
 
+        config = st.session_state.get("ai_config", {})
+        provider = st.selectbox("Proveedor de IA", ["Google Gemini", "OpenAI", "Groq", "DeepSeek", "Custom OpenAI"], index=["Google Gemini", "OpenAI", "Groq", "DeepSeek", "Custom OpenAI"].index(config.get("provider", "Google Gemini")))
+        
+        provider_models = {
+            "Google Gemini": ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash", "Otro (Manual)"],
+            "OpenAI": ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "o1-mini", "o3-mini", "Otro (Manual)"],
+            "Groq": ["llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma2-9b-it", "Otro (Manual)"],
+            "DeepSeek": ["deepseek-chat", "deepseek-reasoner", "Otro (Manual)"],
+            "Custom OpenAI": ["Otro (Manual)"]
+        }
+        
+        available_models = provider_models.get(provider, ["Otro (Manual)"])
+        current_model = config.get("model", "")
+        
+        if current_model and current_model not in available_models:
+            sel_index = available_models.index("Otro (Manual)")
+            manual_val = current_model
+        else:
+            try:
+                sel_index = available_models.index(current_model)
+                manual_val = ""
+            except ValueError:
+                sel_index = 0
+                manual_val = ""
+                
+        selected_model_dropdown = st.selectbox("Modelo", available_models, index=sel_index)
+        
+        if selected_model_dropdown == "Otro (Manual)":
+            model = st.text_input("Escribe el nombre del modelo", value=manual_val or "")
+        else:
+            model = selected_model_dropdown
+        
+        base_url = ""
+        if provider == "Custom OpenAI" or provider == "DeepSeek" or provider == "Groq":
+            base_url = st.text_input("Base URL", value=config.get("base_url", ""))
+            
+        if provider == "DeepSeek" and not base_url:
+            base_url = "https://api.deepseek.com"
+        elif provider == "Groq" and not base_url:
+            base_url = "https://api.groq.com/openai/v1"
+            
         input_key = f"temp_api_key_{st.session_state.key_version}"
         api_key_input = st.text_input(
-            "Gemini API Key",
-            value=st.session_state.gemini_api_key,
+            "API Key",
+            value=config.get("api_key", ""),
             type="password",
-            help="Opcional. Sin key usa modo básico.",
+            help="Requerido para usar IA.",
             key=input_key
         )
+        
         if st.button("💾 Guardar Configuración", use_container_width=True):
-            st.session_state.gemini_api_key = api_key_input
-            save_res = firebase_save_settings(st.session_state.user_email, api_key_input)
+            new_config = {
+                "provider": provider,
+                "model": model,
+                "api_key": api_key_input,
+                "base_url": base_url
+            }
+            st.session_state.ai_config = new_config
+            save_res = firebase_save_settings(st.session_state.user_email, new_config)
             msg_h = st.empty()
             if "error" in save_res:
                 msg_h.error(firebase_error_message(save_res.get("error", {}).get("message", "Error desconocido")))
@@ -541,27 +602,23 @@ with st.sidebar:
             import time
             time.sleep(2)
             msg_h.empty()
+            st.rerun()
         
         if st.button("🗑️ Eliminar Key", use_container_width=True):
-            st.session_state.gemini_api_key = ""
-            st.session_state.key_version += 1 # Forzar a Streamlit a recrear el widget (limpiarlo)
-            save_res = firebase_save_settings(st.session_state.user_email, "")
-            st.warning("Key eliminada de la base de datos.")
-            if "error" in save_res:
-                st.error(firebase_error_message(save_res.get("error", {}).get("message", "Error desconocido")))
+            st.session_state.ai_config = {}
+            st.session_state.key_version += 1 # Forzar a Streamlit a recrear el widget
+            save_res = firebase_save_settings(st.session_state.user_email, {})
+            st.warning("Configuración eliminada de la base de datos.")
             import time
             time.sleep(1.5)
             st.rerun()
-        if api_key_input != st.session_state.gemini_api_key:
-            st.session_state.gemini_api_key = api_key_input
-            st.rerun()
             
-        if st.session_state.gemini_api_key and st.session_state.gemini_enabled:
+        if st.session_state.get("ai_config", {}).get("api_key") and st.session_state.get("ai_enabled"):
             st.success("✅ IA Activada")
-        elif not st.session_state.gemini_enabled:
+        elif not st.session_state.get("ai_enabled"):
             st.info("⏸️ IA Pausada (Modo básico)")
 
-        st.caption("Obtén tu clave gratis en [ai.google.dev](https://ai.google.dev)")
+            st.session_state.ai_config = {}
 
     st.markdown("---")
 
@@ -571,7 +628,8 @@ with st.sidebar:
         st.rerun()
 
     if st.button("Limpiar todos los resultados", use_container_width=True):
-        n = clear_results()
+        u_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+        n = clear_results(user_id=u_email)
         st.success(f"Eliminados {n} resultados.")
         st.rerun()
 
@@ -600,8 +658,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Métricas ───────────────────────────────────────────────────────────────────
 user_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+
+if user_email == "invitado@qa-agent.local":
+    st.warning("🕵️ Estás en **Modo Invitado**. Los resultados solo se guardan temporalmente en este servidor (máx 10 tests) y se perderán. Para guardar en Firestore y tener un historial ilimitado, por favor [regístrate o inicia sesión].")
+
+# ── Métricas ───────────────────────────────────────────────────────────────────
 results = load_all_results(user_id=user_email)
 total   = len(results)
 passed  = sum(1 for r in results if r.get("status") == "PASS")
@@ -644,7 +706,7 @@ with tab_run:
     col_left, col_right = st.columns([3, 2])
     with col_left:
         default_prompt = st.session_state.pop("sidebar_prompt", "")
-        is_ai_active = bool(st.session_state.get("gemini_enabled") and st.session_state.get("gemini_api_key"))
+        is_ai_active = bool(st.session_state.get("ai_enabled") and st.session_state.get("ai_config", {}).get("api_key"))
 
         test_url = st.text_input(
             "URL del sitio a probar" if is_ai_active else "URL a verificar (Modo Basico)",
@@ -667,7 +729,7 @@ with tab_run:
                 disabled=True,
                 help="Sin IA, el sistema no puede interpretar lenguaje natural. Usa el Constructor Visual para pruebas complejas gratuitas."
             )
-            st.info("💡 La IA está apagada. Configura tu **Gemini API Key** en el panel lateral o usa el **Constructor Visual**.")
+            st.info("💡 La IA está apagada. Configura tu **API Key** en el panel lateral o usa el **Constructor Visual**.")
 
 
         test_name = st.text_input("Nombre del test (opcional)", placeholder="Mi Test")
@@ -694,9 +756,9 @@ with tab_run:
                 full_prompt = full_prompt + " en " + test_url.strip()
 
             with st.spinner("Generando plan con IA..." if is_ai_active else "Generando plan basico..."):
-                active_key = st.session_state.gemini_api_key if st.session_state.gemini_enabled else ""
+                active_config = st.session_state.ai_config if st.session_state.ai_enabled else {}
                 try:
-                    steps = generate_test_plan(full_prompt, api_key=active_key)
+                    steps = generate_test_plan(full_prompt, api_key=active_config.get("api_key"), model_name=active_config.get("model", "gemini-2.0-flash"), base_url=active_config.get("base_url"))
                 except Exception as e:
                     st.error(str(e))
                     st.stop()
@@ -714,6 +776,11 @@ with tab_run:
                 from agent.reporter import save_result as _save
                 final_name    = test_name.strip() or ("Test: " + full_prompt[:50])
                 result_holder = {}
+                
+                user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
+                if user_email_check == "invitado@qa-agent.local" and len(steps) > 7:
+                    st.error("🛑 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba para prevenir abusos. Por favor, acorta tu prueba o inicia sesión.")
+                    st.stop()
 
                 with st.status("Ejecutando: " + final_name, expanded=True) as live_status:
                     for event in executor_web.run_test_streaming(
@@ -866,14 +933,14 @@ with tab_builder:
 
         st.markdown("---")
         st.markdown("**2. Anadir pasos con IA**")
-        is_ai = bool(st.session_state.get("gemini_enabled") and st.session_state.get("gemini_api_key"))
+        is_ai = bool(st.session_state.get("ai_enabled") and st.session_state.get("ai_config", {}).get("api_key"))
         if is_ai:
             ai_p = st.text_area("Describe la accion en lenguaje natural", placeholder="Ej: escribe 'admin' en el campo usuario y pulsa Enter", height=80, key="ai_step_prompt")
             if st.button("Generar paso con IA", use_container_width=True):
                 if ai_p.strip():
                     with st.spinner("Interpretando accion..."):
                         try:
-                            new_steps = generate_test_plan(ai_p, api_key=st.session_state.gemini_api_key)
+                            cfg = st.session_state.get("ai_config", {}); new_steps = generate_test_plan(ai_p, api_key=cfg.get("api_key"), model_name=cfg.get("model", "gemini-2.0-flash"), base_url=cfg.get("base_url"))
                             if new_steps:
                                 st.session_state.custom_steps.extend(new_steps)
                                 st.rerun()
@@ -882,7 +949,7 @@ with tab_builder:
                 else:
                     st.warning("Escribe una instruccion primero.")
         else:
-            st.text_area("IA desactivada", placeholder="Activa tu Gemini API Key en el panel lateral.", height=60, disabled=True, key="ai_step_disabled")
+            st.text_area("IA desactivada", placeholder="Activa tu API Key de IA en el panel lateral.", height=60, disabled=True, key="ai_step_disabled")
 
         st.markdown("---")
         b_test_name = st.text_input("Nombre del test", placeholder="Mi Test Personalizado", key="b_name")
@@ -966,6 +1033,11 @@ with tab_builder:
             from agent.reporter import save_result as _save
             name = b_test_name.strip() or ("Test Personalizado " + datetime.now().strftime("%H:%M:%S"))
             result_holder = {}
+            
+            user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
+            if user_email_check == "invitado@qa-agent.local" and len(custom_steps) > 7:
+                st.error("🛑 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
+                st.stop()
 
             with st.status("Ejecutando: " + name, expanded=True) as live_status:
                 for event in executor_web.run_test_streaming(

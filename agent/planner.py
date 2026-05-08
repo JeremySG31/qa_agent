@@ -36,8 +36,7 @@ except ImportError:
         GEMINI_AVAILABLE = True
     except ImportError:
         pass
-
-DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
 
 
 def _fallback_plan(prompt: str) -> list[dict]:
@@ -98,71 +97,58 @@ def _extract_json_steps(raw: str) -> list[dict]:
         f"Respuesta recibida (primeros 300 chars):\n{raw[:300]}"
     )
 
-
-def _plan_with_gemini(prompt: str, api_key: str) -> list[dict]:
+def _plan_with_ai(prompt: str, api_key: str, model_name: str = "gemini-2.0-flash", base_url: str = None) -> list[dict]:
     """
-    Llama a Gemini para generar un plan de prueba estructurado.
-    Devuelve una lista de pasos en formato dict.
-    Soporta tanto google.genai (nueva API) como google.generativeai (deprecada).
+    Llama a un modelo de IA (OpenAI, Gemini via OpenAI endpoint, Groq, etc) para generar un plan de prueba.
     """
-    model_name = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip()
+    import openai
+    
+    # If no base_url is provided but the model is gemini, use Google's OpenAI-compatible endpoint
+    if not base_url and "gemini" in model_name.lower():
+        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        
+    client = openai.OpenAI(api_key=api_key, base_url=base_url)
 
     system_instruction = (
         "Eres un experto en QA automatizado con Selenium. "
         "El usuario te dara un prompt describiendo que probar en una web. "
-        "Responde UNICAMENTE con un JSON valido (sin markdown, sin explicaciones): "
+        "Responde UNICAMENTE con un JSON valido (sin markdown, sin explicaciones, sin texto antes ni despues del array JSON). El JSON debe ser un array de objetos: "
         '[{"action": "open_url", "value": "<url>"}, '
         '{"action": "find_and_type", "selector": "<css_selector>", "value": "<texto>"}, '
         '{"action": "click", "selector": "<css_selector>"}, '
         '{"action": "validate_text", "selector": "<css_selector>", "value": "<texto esperado>"}] '
-        "Acciones permitidas: open_url, find_and_type, click, validate_text, validate_url, validate_exists. "
-        "Usa selectores CSS reales y concretos. Si no conoces la URL exacta, usa una conocida de practica como "
-        "https://practicetestautomation.com/practice-test-login/"
+        "Acciones permitidas: open_url, find_and_type, click, hover, press_key, select_option, scroll_to, validate_text, validate_url, validate_exists, wait, screenshot. "
+        "Usa selectores CSS reales y concretos."
     )
-    full_prompt = system_instruction + "\nPrompt: " + prompt
 
-    if _GENAI_NEW:
-        # Nueva API: google.genai
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model=model_name,
-            contents=full_prompt,
-        )
-        raw = response.text.strip()
-    else:
-        # API deprecada: google.generativeai (v1beta tiene problemas con gemini-1.5-flash)
-        genai.configure(api_key=api_key)
-        safe_model = "gemini-pro" if "1.5" in model_name else model_name
-        model = genai.GenerativeModel(safe_model)
-        response = model.generate_content(full_prompt)
-        raw = response.text.strip()
-
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.1
+    )
+    
+    raw = response.choices[0].message.content.strip()
     return _extract_json_steps(raw)
 
 
-def generate_test_plan(prompt: str, api_key: str = None) -> list[dict]:
+def generate_test_plan(prompt: str, api_key: str = None, model_name: str = "gemini-2.0-flash", base_url: str = None) -> list[dict]:
     """
     Punto de entrada principal del planner.
-    1. Intenta usar Gemini si esta configurado.
-    2. Si falla o no esta disponible, usa plan generico.
+    Usa la IA genérica si se proporciona api_key, sino, plan fallback.
     """
     if api_key is None:
-        api_key = os.getenv("GEMINI_API_KEY", "")
-    api_key = api_key.strip()
-
-    if api_key and not GEMINI_AVAILABLE:
-        raise Exception(
-            "Gemini esta configurado, pero falta instalar google-generativeai. "
-            "Ejecuta: pip install -r requirements.txt"
-        )
-
-    if GEMINI_AVAILABLE and api_key:
+        api_key = os.getenv("GEMINI_API_KEY", "").strip()
+        
+    if api_key:
         try:
-            _safe_print("Usando Gemini para generar el plan de prueba...")
-            return _plan_with_gemini(prompt, api_key)
+            _safe_print("Usando IA para generar el plan de prueba...")
+            return _plan_with_ai(prompt, api_key, model_name, base_url)
         except Exception as e:
-            _safe_print(f"Gemini fallo ({e}), propagando error.")
-            raise Exception(f"Fallo en la API de Gemini: {e}")
+            _safe_print(f"Fallo la IA ({e}), propagando error.")
+            raise Exception(f"Fallo en la API de IA: {e}")
 
     _safe_print("Generando plan basico (modo sin IA)...")
     return _fallback_plan(prompt)
