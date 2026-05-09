@@ -916,13 +916,15 @@ with tab_builder:
                         f'<span style="color:#94a3b8">{detail}</span></div>',
                         unsafe_allow_html=True)
                 with c_up:
-                    if st.button("↑", key=f"up_{i}", help="Subir", use_container_width=True, disabled=(i == 0)):
-                        custom_steps[i-1], custom_steps[i] = custom_steps[i], custom_steps[i-1]
-                        st.rerun()
+                    if st.button("↑", key=f"up_{i}", help="Subir", use_container_width=True):
+                        if i > 0:
+                            custom_steps[i-1], custom_steps[i] = custom_steps[i], custom_steps[i-1]
+                            st.rerun()
                 with c_dn:
-                    if st.button("↓", key=f"dn_{i}", help="Bajar", use_container_width=True, disabled=(i == len(custom_steps)-1)):
-                        custom_steps[i], custom_steps[i+1] = custom_steps[i+1], custom_steps[i]
-                        st.rerun()
+                    if st.button("↓", key=f"dn_{i}", help="Bajar", use_container_width=True):
+                        if i < len(custom_steps)-1:
+                            custom_steps[i], custom_steps[i+1] = custom_steps[i+1], custom_steps[i]
+                            st.rerun()
                 with c_del:
                     if st.button("×", key=f"del_{i}", help="Eliminar", use_container_width=True):
                         st.session_state.custom_steps.pop(i)
@@ -948,16 +950,19 @@ with tab_builder:
     st.markdown("---")
     col_c1, col_c2, col_c3 = st.columns([1.5, 1.5, 1])
     with col_c1:
-        b_test_name = st.text_input("Nombre de la prueba", placeholder="Ej: Comprar un producto", key="b_name")
+        b_test_name = st.text_input("Nombre de la prueba (Opcional)", placeholder="Ej: Comprar un producto", key="b_name")
     with col_c2:
         b_timeout = st.select_slider("Tiempo límite (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
         b_delay   = st.select_slider("Pausa (seg)", options=[0.0,0.5,1.0,2.0], value=0.5, key="b_delay")
     with col_c3:
         st.markdown("<br>", unsafe_allow_html=True)
         run_custom = st.button("🚀 Ejecutar Prueba", type="primary", use_container_width=True)
-        if st.button("Limpiar pasos", use_container_width=True):
+        
+        def clear_custom_steps():
             st.session_state.custom_steps = []
-            st.rerun()
+            st.session_state.pop("last_result", None)
+            
+        st.button("Limpiar pasos", use_container_width=True, on_click=clear_custom_steps)
 
     # Ejecucion con streaming
     if st.session_state.get("last_result"):
@@ -974,6 +979,13 @@ with tab_builder:
                 s_ok = s.get("status") == "ok"
                 icon = "✅" if s_ok else "❌"
                 st.write(f"**Paso {idx}:** {icon} [{s.get('action')}] - {s.get('detail', 'OK')}")
+                if "screenshot" in s:
+                    import base64
+                    try:
+                        decoded = base64.b64decode(s["screenshot"])
+                        st.image(decoded, caption="Captura de pantalla", use_container_width=True)
+                    except Exception:
+                        pass
 
     if run_custom:
         st.session_state.pop("last_result", None)
@@ -987,7 +999,9 @@ with tab_builder:
             from agent import executor_web
             importlib.reload(executor_web)
             from agent.reporter import save_result as _save
-            name = b_test_name.strip() or ("Test Personalizado " + datetime.now().strftime("%H:%M:%S"))
+            
+            default_name = f"Test del {datetime.now().strftime('%d/%m a las %H:%M')}"
+            name = b_test_name.strip() or default_name
             result_holder = {}
             
             user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
@@ -1058,7 +1072,7 @@ with tab_builder:
                 st.session_state.last_result = {
                     "name": name,
                     "status": result_holder.get("status", "FAIL"),
-                    "steps": clean_steps
+                    "steps": result_holder.get("steps", [])
                 }
                 st.rerun()
 # ────────────────────────────────────────────────────────────────────────────
