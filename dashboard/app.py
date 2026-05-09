@@ -383,6 +383,7 @@ if not st.session_state.user_logged_in:
                                 st.session_state.user_email = res.get("email")
                                 st.session_state.firebase_id_token = res.get("idToken", "")
                                 st.session_state.gemini_api_key = firebase_load_settings(res.get("email"))
+                                st.session_state.custom_steps = []
                                 st.query_params["user"] = st.session_state.user_email
                                 if remember:
                                     st.query_params["saved_email"] = l_email
@@ -439,6 +440,7 @@ if not st.session_state.user_logged_in:
                                 st.session_state.firebase_id_token = res.get("idToken", "")
                                 # CARGAR CONFIGURACIÓN DESDE FIRESTORE (estará vacío pero inicializa)
                                 st.session_state.ai_config = {}
+                                st.session_state.custom_steps = []
                                 st.query_params["user"] = st.session_state.user_email
                                 st.rerun()
                             else:
@@ -457,6 +459,7 @@ if not st.session_state.user_logged_in:
             st.session_state.user_email = f"invitado_{str(uuid.uuid4())[:8]}@qa-agent.local"
             st.session_state.is_guest = True
             st.session_state.ai_config = {} # No tiene API Key guardada
+            st.session_state.custom_steps = []
             st.query_params["user"] = st.session_state.user_email
             st.rerun()
 
@@ -576,8 +579,11 @@ with st.sidebar:
             st.session_state.firebase_id_token = ""
             st.session_state.ai_config = {}
             st.session_state.is_guest = False
+            st.session_state.custom_steps = []
             try:
+                saved = st.query_params.get("saved_email", "")
                 st.query_params.clear()
+                if saved: st.query_params["saved_email"] = saved
             except Exception:
                 pass
             st.rerun()
@@ -590,8 +596,11 @@ with st.sidebar:
             st.session_state.firebase_id_token = ""
             st.session_state.ai_config = {}
             st.session_state.is_guest = False
+            st.session_state.custom_steps = []
             try:
+                saved = st.query_params.get("saved_email", "")
                 st.query_params.clear()
+                if saved: st.query_params["saved_email"] = saved
             except Exception:
                 pass
             st.rerun()
