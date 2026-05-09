@@ -106,16 +106,26 @@ def _build_driver(headless: bool = True):
                 chromedriver_path = shutil.which("chromedriver") or shutil.which("chromium-chromedriver")
                 
                 try:
+                    # 1. Intentar usar el driver del sistema si se encontró (ideal para Streamlit Cloud)
                     if chromedriver_path:
                         service = ChromeService(executable_path=chromedriver_path)
                         driver = webdriver.Chrome(service=service, options=options)
-                    elif CHROME_MANAGER_AVAILABLE:
-                        service = ChromeService(ChromeDriverManager().install())
-                        driver = webdriver.Chrome(service=service, options=options)
-                    else:
+                        _safe_print("Navegador: Google Chrome / Chromium (System Driver)")
+                        return driver
+                    
+                    # 2. Intentar Selenium Manager nativo (Selenium >= 4.6)
+                    try:
                         driver = webdriver.Chrome(options=options)
-                    _safe_print("Navegador: Google Chrome / Chromium")
-                    return driver
+                        _safe_print("Navegador: Google Chrome (Selenium Manager)")
+                        return driver
+                    except Exception as inner_e:
+                        # 3. Fallback a webdriver-manager si falla lo anterior
+                        if CHROME_MANAGER_AVAILABLE:
+                            service = ChromeService(ChromeDriverManager().install())
+                            driver = webdriver.Chrome(service=service, options=options)
+                            _safe_print("Navegador: Google Chrome (Webdriver Manager)")
+                            return driver
+                        raise inner_e
                 except Exception as e:
                     _safe_print(f"Fallo Chrome: {e}")
                     errors.append(f"Chrome: {e}")
@@ -124,13 +134,24 @@ def _build_driver(headless: bool = True):
                 options = EdgeOptions()
                 if headless: options.add_argument("--headless=new")
                 options.add_argument("--log-level=3")
-                if EDGE_MANAGER_AVAILABLE:
-                    service = EdgeService(EdgeChromiumDriverManager().install())
-                    driver = webdriver.Edge(service=service, options=options)
-                else:
-                    driver = webdriver.Edge(options=options)
-                _safe_print("Navegador: Microsoft Edge")
-                return driver
+                
+                try:
+                    # 1. Intentar Selenium Manager nativo primero (evita errores de red de webdriver-manager)
+                    try:
+                        driver = webdriver.Edge(options=options)
+                        _safe_print("Navegador: Microsoft Edge (Selenium Manager)")
+                        return driver
+                    except Exception as inner_e:
+                        # 2. Fallback a webdriver-manager
+                        if EDGE_MANAGER_AVAILABLE:
+                            service = EdgeService(EdgeChromiumDriverManager().install())
+                            driver = webdriver.Edge(service=service, options=options)
+                            _safe_print("Navegador: Microsoft Edge (Webdriver Manager)")
+                            return driver
+                        raise inner_e
+                except Exception as e:
+                    _safe_print(f"Fallo Edge: {e}")
+                    errors.append(f"Edge: {e}")
         except Exception as e:
             _safe_print(f"No se pudo iniciar {browser}: {e}")
             errors.append(f"{browser}: {e}")
