@@ -37,10 +37,8 @@ def save_result(result: dict, user_id: str = "default") -> str:
     result["created_at"] = datetime.now().isoformat()
     safe_result = _make_json_safe(result)
 
-    # Si es invitado, no guardar nada
-    if "invitado_" in user_id:
-        print(f"ℹ️ Modo invitado: el resultado no se guardará de forma permanente.")
-        return "guest_session"
+    # Quitamos la restricción de invitado para que sus tests se guarden temporalmente 
+    # y así funcionen las métricas y el límite de 10 pruebas por sesión.
 
     if FIREBASE_PROJECT_ID and FIREBASE_API_KEY:
         try:
@@ -63,9 +61,7 @@ def save_result(result: dict, user_id: str = "default") -> str:
 
 
 def load_all_results(user_id: str = "default") -> list[dict]:
-    if "invitado_" in user_id:
-        return []
-
+    # Permitimos consultar los resultados del invitado actual
     if FIREBASE_PROJECT_ID and FIREBASE_API_KEY:
         try:
             doc_id = user_id.replace("@", "_at_").replace(".", "_dot_")
@@ -93,9 +89,7 @@ def load_all_results(user_id: str = "default") -> list[dict]:
 
 
 def clear_results(user_id: str = "default") -> int:
-    if "invitado_" in user_id:
-        return 0
-
+    # Permitimos limpiar historial de invitado
     if FIREBASE_PROJECT_ID and FIREBASE_API_KEY:
         try:
             doc_id = user_id.replace("@", "_at_").replace(".", "_dot_")
