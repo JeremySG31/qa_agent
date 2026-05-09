@@ -10,6 +10,7 @@ Acciones soportadas:
 """
 
 import time
+import platform
 from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -92,10 +93,14 @@ def _build_driver(headless: bool = True):
             if browser == "chrome":
                 import shutil
                 options = ChromeOptions()
-                if headless: 
+                is_linux = platform.system() == "Linux"
+                
+                # En Linux (Streamlit Cloud), forzamos servidor-seguro sin importar qué pida la UI
+                if headless or is_linux: 
                     options.add_argument("--headless=new")
                     options.add_argument("--no-sandbox")
                     options.add_argument("--disable-dev-shm-usage")
+                    options.add_argument("--disable-gpu")
                 options.add_argument("--log-level=3")
                 options.add_argument("--window-size=1920,1080")
                 
@@ -133,10 +138,13 @@ def _build_driver(headless: bool = True):
 
             elif browser == "edge":
                 options = EdgeOptions()
-                if headless: 
+                is_linux = platform.system() == "Linux"
+                
+                if headless or is_linux: 
                     options.add_argument("--headless=new")
                     options.add_argument("--no-sandbox")
                     options.add_argument("--disable-dev-shm-usage")
+                    options.add_argument("--disable-gpu")
                 options.add_argument("--log-level=3")
                 options.add_argument("--window-size=1920,1080")
                 
