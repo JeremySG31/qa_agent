@@ -92,10 +92,11 @@ def _build_driver(headless: bool = True):
             if browser == "chrome":
                 import shutil
                 options = ChromeOptions()
-                if headless: options.add_argument("--headless=new")
+                if headless: 
+                    options.add_argument("--headless=new")
+                    options.add_argument("--no-sandbox")
+                    options.add_argument("--disable-dev-shm-usage")
                 options.add_argument("--log-level=3")
-                options.add_argument("--no-sandbox")
-                options.add_argument("--disable-dev-shm-usage")
                 options.add_argument("--window-size=1920,1080")
                 
                 # Intentar detectar Chromium en Linux/Streamlit Cloud
@@ -132,8 +133,12 @@ def _build_driver(headless: bool = True):
 
             elif browser == "edge":
                 options = EdgeOptions()
-                if headless: options.add_argument("--headless=new")
+                if headless: 
+                    options.add_argument("--headless=new")
+                    options.add_argument("--no-sandbox")
+                    options.add_argument("--disable-dev-shm-usage")
                 options.add_argument("--log-level=3")
+                options.add_argument("--window-size=1920,1080")
                 
                 try:
                     # 1. Intentar Selenium Manager nativo primero (evita errores de red de webdriver-manager)
