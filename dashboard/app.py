@@ -8,32 +8,20 @@ Ejecutar con: streamlit run dashboard/app.py
 
 
 
-import sys, os, json, subprocess, re, importlib
-import agent.planner
-
+import sys, os, json, subprocess, re, importlib, uuid
 from pathlib import Path
-
 from datetime import datetime
-
 from urllib.parse import quote
-
-
-
 import streamlit as st
 
-
-
 ROOT = Path(__file__).parent.parent
-
 sys.path.insert(0, str(ROOT))
 
-
-
+import agent.planner
 from agent.reporter import load_all_results, clear_results, save_result
-
 from agent.planner  import generate_test_plan
-
 from agent.crypto   import encrypt_data, decrypt_data
+from streamlit_sortables import sort_items
 
 
 
@@ -1377,11 +1365,14 @@ with tab_builder:
                 try:
                     importlib.reload(agent.planner)
                     new_steps = agent.planner.generate_test_plan(ai_full_prompt)
-
+                    
+                    # Asegurar IDs únicos para drag and drop
+                    for s in new_steps:
+                        if "id" not in s: s["id"] = str(uuid.uuid4())[:8]
+                        
                     st.session_state.custom_steps = new_steps
                     st.session_state.ai_generations_count += 1
                     st.success(f"¡Pasos generados! (Uso: {st.session_state.ai_generations_count}/{max_generations})")
-
                     st.rerun()
 
                 except Exception as e:
@@ -1496,200 +1487,115 @@ with tab_builder:
 
                 b_value = st.text_input("O pixels a bajar (si no hay selector)", placeholder="500", key="bv_sc")
 
-
-
         elif b_action == "select_option":
-
             b_selector = st.text_input("Selector CSS del select", placeholder="select#pais, .dropdown", key="bs_so")
-
             b_value    = st.text_input("Texto visible de la opcion", placeholder="Colombia", key="bv_so")
 
-
-
         elif b_action == "validate_text":
-
             b_selector = st.text_input("Selector CSS", placeholder="h1, .alert, #mensaje", key="bs_vt")
-
             b_value    = st.text_input("Texto esperado (parcial)", placeholder="Bienvenido", key="bv_vt")
 
-
-
         elif b_action == "validate_url":
-
             b_value = st.text_input("URL parcial esperada", placeholder="dashboard, /home", key="bv_vu")
 
-
-
         elif b_action == "validate_exists":
-
             b_selector = st.text_input("Selector CSS a verificar", placeholder=".navbar, #logo, button", key="bs_ve")
 
-
-
         elif b_action == "wait":
-
-            b_value = st.select_slider("Segundos a esperar", options=[0.5, 1.0, 1.5, 2.0, 3.0, 5.0], value=1.0, key="bv_wt")
-
-            b_value = str(b_value)
-
-
+            b_val_wait = st.select_slider("Segundos a esperar", options=[0.5, 1.0, 1.5, 2.0, 3.0, 5.0], value=1.0, key="bv_wt")
+            b_value = str(b_val_wait)
 
         elif b_action == "screenshot":
-
-            b_value = ""  # Sin parametros adicionales
-
-
+            b_value = ""
 
         elif b_action == "generate_email":
-
-            b_value = st.text_input("Prefijo opcional (ej: user_test)", placeholder="Aleatorio si queda vacio", key="bv_ge")
-
-
+            b_value = st.text_input("Prefijo opcional", placeholder="Aleatorio si queda vacio", key="bv_ge")
 
         elif b_action == "wait_for_email":
-
-            b_value = st.text_input("Correo a monitorear (opcional)", placeholder="Usa el último generado si queda vacio", key="bv_we")
-
-
-
-        # Validacion y boton agregar
+            b_value = st.text_input("Correo a monitorear", placeholder="Último generado si vacío", key="bv_we")
 
         REQUIRES_SEL = {"find_and_type","click","hover","scroll_to","select_option","validate_text","validate_exists"}
-
         REQUIRES_VAL = {"open_url","find_and_type","select_option","validate_text","validate_url","wait"}
 
-
-
-        if st.button("Anadir paso", use_container_width=True):
-
+        if st.button("Añadir paso", use_container_width=True):
             err = None
-
             if b_action in REQUIRES_SEL and not b_selector and b_action != "scroll_to":
-
-                err = "Selector CSS requerido para esta accion."
-
+                err = "Selector CSS requerido para esta acción."
             elif b_action in REQUIRES_VAL and not b_value and b_action not in ("scroll_to",):
-
-                err = "Valor/texto requerido para esta accion."
-
-            if err:
-
-                st.error(err)
-
+                err = "Valor requerido para esta acción."
+            
+            if err: st.error(err)
             else:
-
-                step = {"action": b_action}
-
-                if b_selector: step["selector"] = b_selector
-
-                if b_value:    step["value"]    = b_value
-
-                st.session_state.custom_steps.append(step)
-
-                st.success("Paso '" + b_action + "' agregado (" + str(len(st.session_state.custom_steps)) + " pasos)")
-
+                st.session_state.custom_steps.append({"action": b_action, "id": str(uuid.uuid4())[:8], "selector": b_selector, "value": b_value})
+                st.success(f"Paso '{b_action}' agregado.")
                 st.rerun()
 
-
-
         st.markdown("---")
-
         
-
     with col_b2:
-
         st.markdown("**Pasos del test**")
+        
+        @st.fragment
+        def render_sortable_steps():
+            custom_steps = st.session_state.custom_steps
+            if not custom_steps:
+                st.markdown(
+                    '<div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;'
+                    'padding:30px;text-align:center;color:#475569;">'
+                    '<div style="font-size:2rem;margin-bottom:8px">+</div>'
+                    '<div>No hay pasos aún. Añade acciones o genéralas con IA.</div>'
+                    '</div>',
+                    unsafe_allow_html=True)
+                return
 
-        custom_steps = st.session_state.custom_steps
-
-
-
-        if not custom_steps:
-
-            st.markdown(
-
-                '<div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;'
-
-                'padding:30px;text-align:center;color:#475569;">'
-
-                '<div style="font-size:2rem;margin-bottom:8px">+</div>'
-
-                '<div>No hay pasos aun. Anade acciones desde el panel izquierdo o genéralos con IA.</div>'
-
-                '</div>',
-
-                unsafe_allow_html=True)
-
-        else:
-
+            display_to_step = {}
+            display_list = []
             for i, s in enumerate(custom_steps):
-
-                act    = s.get("action","")
-
-                val    = s.get("value","")
-
-                sel    = s.get("selector","")
-
+                if "id" not in s: s["id"] = str(uuid.uuid4())[:8]
+                act, val, sel = s.get("action",""), s.get("value",""), s.get("selector","")
                 detail = val if val else sel
+                display_text = f"⠿ {i+1}. [{act.upper()}] {detail}"
+                key = f"{display_text}" + (" " * 50) + f"\u200b{s['id']}"
+                display_list.append(key)
+                display_to_step[key] = s
 
-                c_num, c_info, c_up, c_dn, c_del = st.columns([0.5, 8, 0.5, 0.5, 0.5])
-                with c_num:
-                    st.markdown(f"<div style='color:#818cf8;font-family:JetBrains Mono,monospace;font-size:.85rem;padding-top:8px;'>{i+1}</div>", unsafe_allow_html=True)
-                with c_info:
-                    st.markdown(
-                        f'<div class="plan-step" style="border-bottom:none;padding:4px 0;">'
-                        f'<span class="plan-act">[{act}]</span>'
-                        f'<span style="color:#94a3b8">{detail}</span></div>',
-                        unsafe_allow_html=True)
-                        
-                with c_up:
-                    if i > 0:
-                        if st.button("↑", key=f"up_{i}", help="Subir", use_container_width=True):
-                            custom_steps[i-1], custom_steps[i] = custom_steps[i], custom_steps[i-1]
-                            st.rerun()
-                
-                with c_dn:
-                    if i < len(custom_steps) - 1:
-                        if st.button("↓", key=f"dn_{i}", help="Bajar", use_container_width=True):
-                            custom_steps[i], custom_steps[i+1] = custom_steps[i+1], custom_steps[i]
-                            st.rerun()
+            custom_style = """
+            .sortable-container { background-color: #0d0f14 !important; border: 1px solid #1e293b !important; border-radius: 12px !important; margin-bottom: 20px !important; }
+            .sortable-container-header { background-color: #1e293b !important; color: #22d3ee !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 1px !important; font-size: 0.85rem !important; padding: 10px !important; border-bottom: 1px solid #334155 !important; }
+            .sortable-container-body { background-color: #0d0f14 !important; max-height: 380px !important; overflow-y: auto !important; padding: 10px !important; }
+            .sortable-item { background: linear-gradient(90deg, #1e293b, #0f172a) !important; border: 1px solid #38bdf844 !important; border-radius: 8px !important; color: #e2e8f0 !important; padding: 12px 16px !important; margin-bottom: 8px !important; font-family: 'JetBrains Mono', monospace !important; font-size: 0.82rem !important; box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+            .sortable-item:hover { border-color: #22d3ee !important; background: #1e293b !important; }
+            """
+            st.caption("🖱️ Arrastra para reordenar o a la Papelera para borrar.")
+            columns = [{"header": "📋 ORDEN DE EJECUCIÓN", "items": display_list}, {"header": "🗑️ PAPELERA", "items": []}]
+            results = sort_items(columns, direction="vertical", multi_containers=True, custom_style=custom_style)
+            
+            new_display_list = results[0].get("items", [])
+            trash_list = results[1].get("items", [])
+            new_steps = [display_to_step[k] for k in new_display_list if k in display_to_step]
+            
+            if len(new_steps) != len(custom_steps) or new_display_list != display_list:
+                st.session_state.custom_steps = new_steps
+                if trash_list: st.toast(f"🗑️ Eliminado(s) {len(trash_list)} paso(s)")
+                st.rerun(scope="fragment")
 
-                with c_del:
-                    if st.button("×", key=f"del_{i}", help="Eliminar", use_container_width=True):
-                        st.session_state.custom_steps.pop(i)
+        render_sortable_steps()
+
+        with st.expander("Exportar / Importar pasos (JSON)"):
+            st.code(json.dumps(st.session_state.custom_steps, indent=2, ensure_ascii=False), language="json")
+            imported = st.text_area("Pega JSON aqui para importar", height=120, key="import_json")
+            if st.button("Importar pasos"):
+                try:
+                    parsed = json.loads(imported)
+                    if isinstance(parsed, list):
+                        st.session_state.custom_steps = parsed
+                        st.success(f"{len(parsed)} pasos importados.")
                         st.rerun()
+                    else: st.error("Debe ser una lista.")
+                except Exception as e: st.error(f"Error: {e}")
 
 
 
-            st.markdown("---")
-
-            with st.expander("Exportar / Importar pasos (JSON)"):
-
-                st.code(json.dumps(custom_steps, indent=2, ensure_ascii=False), language="json")
-
-                imported = st.text_area("Pega JSON aqui para importar", height=120, key="import_json")
-
-                if st.button("Importar pasos"):
-
-                    try:
-
-                        parsed = json.loads(imported)
-
-                        if isinstance(parsed, list):
-
-                            st.session_state.custom_steps = parsed
-
-                            st.success(str(len(parsed)) + " pasos importados.")
-
-                            st.rerun()
-
-                        else:
-
-                            st.error("El JSON debe ser una lista de pasos.")
-
-                    except json.JSONDecodeError as e:
-
-                        st.error("JSON invalido: " + str(e))
 
 
 
