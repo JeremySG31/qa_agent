@@ -906,7 +906,7 @@ with tab_builder:
                 val    = s.get("value","")
                 sel    = s.get("selector","")
                 detail = val if val else sel
-                c_num, c_info, c_up, c_dn, c_del = st.columns([0.5, 5.5, 0.8, 0.8, 0.8])
+                c_num, c_info, c_m1, c_m2, c_del = st.columns([0.5, 5.5, 0.8, 0.8, 0.8])
                 with c_num:
                     st.markdown(f"<div style='color:#818cf8;font-family:JetBrains Mono,monospace;font-size:.85rem;padding-top:8px;'>{i+1}</div>", unsafe_allow_html=True)
                 with c_info:
@@ -915,16 +915,28 @@ with tab_builder:
                         f'<span class="plan-act">[{act}]</span>'
                         f'<span style="color:#94a3b8">{detail}</span></div>',
                         unsafe_allow_html=True)
-                with c_up:
-                    if st.button("↑", key=f"up_{i}", help="Subir", use_container_width=True):
-                        if i > 0:
-                            custom_steps[i-1], custom_steps[i] = custom_steps[i], custom_steps[i-1]
-                            st.rerun()
-                with c_dn:
-                    if st.button("↓", key=f"dn_{i}", help="Bajar", use_container_width=True):
-                        if i < len(custom_steps)-1:
+                        
+                btns = []
+                if i > 0: btns.append("up")
+                if i < len(custom_steps) - 1: btns.append("dn")
+                
+                with c_m1:
+                    if len(btns) > 0:
+                        if btns[0] == "up":
+                            if st.button("↑", key=f"up1_{i}", help="Subir", use_container_width=True):
+                                custom_steps[i-1], custom_steps[i] = custom_steps[i], custom_steps[i-1]
+                                st.rerun()
+                        else:
+                            if st.button("↓", key=f"dn1_{i}", help="Bajar", use_container_width=True):
+                                custom_steps[i], custom_steps[i+1] = custom_steps[i+1], custom_steps[i]
+                                st.rerun()
+                
+                with c_m2:
+                    if len(btns) > 1:
+                        if st.button("↓", key=f"dn2_{i}", help="Bajar", use_container_width=True):
                             custom_steps[i], custom_steps[i+1] = custom_steps[i+1], custom_steps[i]
                             st.rerun()
+
                 with c_del:
                     if st.button("×", key=f"del_{i}", help="Eliminar", use_container_width=True):
                         st.session_state.custom_steps.pop(i)
