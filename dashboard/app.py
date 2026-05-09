@@ -57,7 +57,7 @@ st.set_page_config(
 
     layout="wide",
 
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 
 )
 
@@ -154,25 +154,14 @@ html, body, [class*="css"] { font-family:'Syne',sans-serif; background:#0d0f14; 
 }
 
 .metric-value { 
-
   font-family: 'Syne', sans-serif; 
-
-  font-size: clamp(1.8rem, 3vw, 2.8rem); 
-
+  font-size: 2.2rem; 
   font-weight: 800; 
-
   line-height: 1.1; 
-
-  white-space: nowrap;
-
   background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
-
   -webkit-background-clip: text;
-
   -webkit-text-fill-color: transparent;
-
-  filter: drop-shadow(0px 4px 10px rgba(56,189,248,0.4));
-
+  filter: drop-shadow(0px 4px 8px rgba(56,189,248,0.3));
 }
 
 .metric-label { font-size:.85rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-top:10px; font-weight:700; }
@@ -379,6 +368,25 @@ hr { border-color:#1e293b !important; }
 
 .google-icon { width: 24px; height: 24px; }
 
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .qa-header { padding: 18px 20px !important; margin-bottom: 16px !important; }
+  .qa-header h1 { font-size: 1.5rem !important; }
+  .qa-header p { font-size: 0.85rem !important; }
+  
+  .metric-box { padding: 16px 8px !important; margin-bottom: 10px !important; }
+  .metric-value { font-size: 1.8rem !important; }
+  .metric-label { font-size: 0.7rem !important; letter-spacing: 1px !important; }
+  
+  .login-box { padding: 24px 20px !important; width: 95% !important; max-width: 380px !important; margin: 0 auto !important; }
+  .login-logo { font-size: 2rem !important; }
+  
+  /* Sortable list adjustments */
+  .sortable-item { font-size: 0.75rem !important; padding: 10px 12px !important; }
+  
+  /* Streamlit columns spacing */
+  div[data-testid="column"] { margin-bottom: 1rem !important; }
+}
 </style>
 
 """, unsafe_allow_html=True)
@@ -1560,6 +1568,10 @@ with tab_builder:
             .sortable-container-body { background-color: #0d0f14 !important; max-height: 380px !important; overflow-y: auto !important; padding: 10px !important; }
             .sortable-item { background: linear-gradient(90deg, #1e293b, #0f172a) !important; border: 1px solid #38bdf844 !important; border-radius: 8px !important; color: #e2e8f0 !important; padding: 12px 16px !important; margin-bottom: 8px !important; font-family: 'JetBrains Mono', monospace !important; font-size: 0.82rem !important; box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
             .sortable-item:hover { border-color: #22d3ee !important; background: #1e293b !important; }
+            @media (max-width: 768px) {
+                .sortable-container-header { font-size: 0.75rem !important; padding: 8px !important; }
+                .sortable-item { font-size: 0.75rem !important; padding: 8px 10px !important; }
+            }
             """
             st.caption("🖱️ Arrastra para reordenar o a la Papelera para borrar.")
             columns = [{"header": "📋 ORDEN DE EJECUCIÓN", "items": display_list}, {"header": "🗑️ PAPELERA", "items": []}]
