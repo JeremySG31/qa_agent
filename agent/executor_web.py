@@ -34,6 +34,7 @@ except ImportError:
 try:
     from selenium.webdriver.chrome.service import Service as ChromeService
     from webdriver_manager.chrome import ChromeDriverManager
+    from webdriver_manager.core.os_manager import ChromeType
     CHROME_MANAGER_AVAILABLE = True
 except ImportError:
     CHROME_MANAGER_AVAILABLE = False
@@ -109,7 +110,7 @@ def _build_driver(headless: bool = True):
                         service = ChromeService(executable_path=chromedriver_path)
                         driver = webdriver.Chrome(service=service, options=options)
                     elif CHROME_MANAGER_AVAILABLE:
-                        service = ChromeService(ChromeDriverManager().install())
+                        service = ChromeService(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
                         driver = webdriver.Chrome(service=service, options=options)
                     else:
                         driver = webdriver.Chrome(options=options)
