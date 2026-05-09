@@ -825,7 +825,9 @@ with tab_run:
             st.markdown("</div>", unsafe_allow_html=True)
 
             if True:
+                import importlib
                 from agent import executor_web
+                importlib.reload(executor_web)
                 from agent.reporter import save_result as _save
                 final_name    = test_name.strip() or ("Test: " + full_prompt[:50])
                 result_holder = {}
@@ -1093,7 +1095,9 @@ with tab_builder:
         if not custom_steps:
             st.warning("Anade al menos un paso primero.")
         else:
+            import importlib
             from agent import executor_web
+            importlib.reload(executor_web)
             from agent.reporter import save_result as _save
             name = b_test_name.strip() or ("Test Personalizado " + datetime.now().strftime("%H:%M:%S"))
             result_holder = {}
