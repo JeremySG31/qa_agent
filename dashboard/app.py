@@ -928,6 +928,21 @@ with tab_builder:
                     except json.JSONDecodeError as e:
                         st.error("JSON invalido: " + str(e))
 
+    # Controles de Ejecución Globales
+    st.markdown("---")
+    col_c1, col_c2, col_c3 = st.columns([1.5, 1.5, 1])
+    with col_c1:
+        b_test_name = st.text_input("Nombre de la prueba", placeholder="Ej: Comprar un producto", key="b_name")
+    with col_c2:
+        b_timeout = st.select_slider("Tiempo límite (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
+        b_delay   = st.select_slider("Pausa (seg)", options=[0.0,0.5,1.0,2.0], value=0.5, key="b_delay")
+    with col_c3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        run_custom = st.button("🚀 Ejecutar Prueba", type="primary", use_container_width=True)
+        if st.button("Limpiar pasos", use_container_width=True):
+            st.session_state.custom_steps = []
+            st.rerun()
+
     # Ejecucion con streaming
     if run_custom:
         if "invitado_" in st.session_state.get("user_email", "") and len(load_all_results(st.session_state.get("user_email", ""))) >= 10:
