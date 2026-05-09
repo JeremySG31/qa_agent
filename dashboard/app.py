@@ -774,14 +774,12 @@ with tab_run:
         else:
             prompt = ""
             st.text_area(
-                "Lenguaje natural desactivado (IA Apagada)",
-                placeholder='La Inteligencia Artificial está pausada. Ve a la pestaña "Constructor Visual" para pasos manuales.',
+                "Generador de pruebas con IA",
+                placeholder='La IA está desactivada.\n\n👉 Para usar lenguaje natural: Ve al menú izquierdo y activa la IA con tu propia API Key.\n\n👉 Para usuarios invitados: Recomendamos crear una cuenta gratuita para poder guardar tu configuración de IA de forma permanente.',
                 height=120,
-                disabled=True,
-                help="Sin IA, el sistema no puede interpretar lenguaje natural. Usa el Constructor Visual para pruebas complejas gratuitas."
+                disabled=True
             )
-            st.info("💡 La IA está apagada. Configura tu **API Key** en el panel lateral o usa el **Constructor Visual**.")
-            st.info("La IA está apagada. Configura tu API Key en el panel lateral o usa el Constructor Visual.")
+            st.info("💡 **Tip:** Puedes crear pruebas manualmente sin IA usando la pestaña **Constructor Visual**.")
 
 
         test_name = st.text_input("Nombre del test (opcional)", placeholder="Mi Test")
