@@ -422,8 +422,7 @@ if "key_version" not in st.session_state:
     st.session_state.key_version = 0
 
 if "ai_config" not in st.session_state:
-
-    st.session_state.ai_config = {"provider": "Google Gemini", "api_key": os.getenv("GEMINI_API_KEY", "").strip(), "model": "gemini-2.0-flash", "base_url": ""}
+    st.session_state.ai_config = {"provider": "IA Incluida (OpenRouter)", "model": "openai/gpt-oss-120b:free"}
 
 if "firebase_id_token" not in st.session_state:
 
@@ -593,91 +592,13 @@ def firebase_register(email, password):
 
 
 
-def firebase_save_settings(email, ai_config):
 
-    """Cifra la configuracion de IA (dict) y la guarda como JSON en Firestore."""
-
-    import json
-
-    doc_id = email.replace("@", "_at_").replace(".", "_dot_")
-
-    url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?updateMask.fieldPaths=ai_config&key={FIREBASE_API_KEY}"
-
-    
-
-    config_json = json.dumps(ai_config)
-
-    encrypted_config = encrypt_data(config_json)
-
-    
-
-    payload = {
-
-        "fields": {
-
-            "ai_config": {"stringValue": encrypted_config}
-
-        }
-
-    }
-
-    return firebase_request("PATCH", url, json=payload, headers=firebase_headers())
 
 
 
 def firebase_load_settings(email):
-
-    """Carga la configuracion de IA y la descifra para su uso en la sesion."""
-
-    import json
-
-    try:
-
-        doc_id = email.replace("@", "_at_").replace(".", "_dot_")
-
-        url = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents/users/{doc_id}?key={FIREBASE_API_KEY}"
-
-        data = firebase_request("GET", url, headers=firebase_headers())
-
-        if "error" not in data and "fields" in data:
-
-            # Intentar cargar la nueva ai_config
-
-            if "ai_config" in data.get("fields", {}):
-
-                encrypted_config = data["fields"]["ai_config"].get("stringValue", "")
-
-                decrypted = decrypt_data(encrypted_config)
-
-                return json.loads(decrypted)
-
-                
-
-            # Retrocompatibilidad con la antigua gemini_api_key
-
-            if "gemini_api_key" in data.get("fields", {}):
-
-                encrypted_key = data["fields"]["gemini_api_key"].get("stringValue", "")
-
-                decrypted_key = decrypt_data(encrypted_key)
-
-                return {
-
-                    "provider": "Google Gemini",
-
-                    "api_key": decrypted_key,
-
-                    "model": "gemini-2.0-flash",
-
-                    "base_url": ""
-
-                }
-
-    except Exception as e:
-
-        print(f"⚠️ Error cargando configuracion: {e}")
-
-    return {}
+    # Ya no se cargan configuraciones de IA por usuario (usamos IA Incluida)
+    return {"provider": "IA Incluida (OpenRouter)", "model": "openai/gpt-oss-120b:free"}
 
 
 
@@ -687,15 +608,9 @@ def firebase_load_settings(email):
 
 
 
-# ── Recargar Gemini Key tras restauración de sesión desde URL ──────────────────
-
+# Se elimina la recarga de llaves personales ya que se usa IA centralizada
 if st.session_state.pop("_needs_key_reload", False):
-
-    _email_to_restore = st.session_state.get("user_email", "")
-
-    if _email_to_restore and not st.session_state.get("ai_config", {}).get("api_key"):
-
-        st.session_state.ai_config = firebase_load_settings(_email_to_restore)
+    pass
 
 
 
@@ -763,11 +678,7 @@ if not st.session_state.user_logged_in:
                                 st.session_state.user_logged_in = True
 
                                 st.session_state.user_email = res.get("email")
-
                                 st.session_state.firebase_id_token = res.get("idToken", "")
-
-                                st.session_state.gemini_api_key = firebase_load_settings(res.get("email"))
-
                                 st.session_state.custom_steps = []
 
                                 st.query_params["user"] = st.session_state.user_email
