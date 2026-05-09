@@ -8,7 +8,6 @@ import os
 import json
 import re
 
-
 def _safe_print(*args, **kwargs):
     """Print seguro que nunca falla por encoding en Windows."""
     try:
@@ -19,7 +18,6 @@ def _safe_print(*args, **kwargs):
             print(text.encode("ascii", errors="replace").decode("ascii"), **kwargs)
         except Exception:
             pass
-
 
 # Intentar importar Google Generative AI (Gemini)
 GEMINI_AVAILABLE = False
@@ -65,12 +63,7 @@ def _fallback_plan(prompt: str) -> list[dict]:
 def _extract_json_steps(raw: str) -> list[dict]:
     """
     Extrae de forma robusta una lista JSON desde el texto crudo de Gemini.
-    Estrategias:
-      1. Strip de fences markdown y parse directo.
-      2. Buscar el primer bloque [...] con regex.
-      3. Lanzar error descriptivo si todo falla.
     """
-    # Estrategia 1: limpiar fences y parsear
     cleaned = re.sub(r"```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
     cleaned = cleaned.strip().strip("`").strip()
     try:
@@ -82,7 +75,6 @@ def _extract_json_steps(raw: str) -> list[dict]:
     except json.JSONDecodeError:
         pass
 
-    # Estrategia 2: encontrar el bloque [...] con regex
     match = re.search(r"(\[\s*\{.+?\}\s*\])", cleaned, re.DOTALL)
     if match:
         try:
@@ -92,18 +84,12 @@ def _extract_json_steps(raw: str) -> list[dict]:
         except json.JSONDecodeError:
             pass
 
-    raise ValueError(
-        f"No se pudo parsear la respuesta de Gemini como JSON.\n"
-        f"Respuesta recibida (primeros 300 chars):\n{raw[:300]}"
-    )
+    raise ValueError(f"No se pudo parsear JSON de la IA: {raw[:200]}")
 
-def _plan_with_ai(prompt: str, api_key: str, model_name: str = "gemini-2.0-flash", base_url: str = None) -> list[dict]:
-    """
-    Llama a un modelo de IA (OpenAI, Gemini via OpenAI endpoint, Groq, etc) para generar un plan de prueba.
-    """
+def _plan_with_ai(prompt: str, api_key: str, model_name: str, base_url: str = None) -> list[dict]:
+    """Llama a un modelo de IA para generar un plan de prueba."""
     import openai
     
-    # If no base_url is provided but the model is gemini, use Google's OpenAI-compatible endpoint
     if not base_url and "gemini" in model_name.lower():
         base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
         
@@ -111,17 +97,10 @@ def _plan_with_ai(prompt: str, api_key: str, model_name: str = "gemini-2.0-flash
 
     system_instruction = (
         "Eres un experto en QA automatizado con Selenium. "
-        "El usuario te dara un prompt describiendo que probar en una web. "
-        "Responde UNICAMENTE con un JSON valido (sin markdown, sin explicaciones, sin texto antes ni despues del array JSON). El JSON debe ser un array de objetos: "
-        '[{"action": "open_url", "value": "<url>"}, '
-        '{"action": "find_and_type", "selector": "<css_selector>", "value": "<texto>"}, '
-        '{"action": "click", "selector": "<css_selector>"}, '
-        '{"action": "generate_email", "value": "<prefijo_opcional>"}, '
-        '{"action": "wait_for_email", "value": "<correo_opcional>"}, '
-        '{"action": "validate_text", "selector": "<css_selector>", "value": "<texto esperado>"}] '
+        "Responde UNICAMENTE con un array JSON de objetos. "
+        'Ejemplo: [{"action": "open_url", "value": "url"}, {"action": "click", "selector": "css"}] '
         "Acciones permitidas: open_url, find_and_type, click, hover, press_key, select_option, scroll_to, validate_text, validate_url, validate_exists, wait, screenshot, generate_email, wait_for_email. "
-        "Usa {{email}} en el campo 'value' de otras acciones para usar el correo generado. "
-        "Usa selectores CSS reales y concretos."
+        "Usa {{email}} para referenciar un correo generado previamente."
     )
 
     response = client.chat.completions.create(
@@ -138,20 +117,14 @@ def _plan_with_ai(prompt: str, api_key: str, model_name: str = "gemini-2.0-flash
 
 
 def generate_test_plan(prompt: str, api_key: str = None, model_name: str = "gemini-2.0-flash", base_url: str = None) -> list[dict]:
-    """
-    Punto de entrada principal del planner.
-    Usa la IA genérica si se proporciona api_key, sino, plan fallback.
-    """
+    """Punto de entrada principal para generar planes de prueba."""
     if api_key is None:
         api_key = os.getenv("GEMINI_API_KEY", "").strip()
         
     if api_key:
         try:
-            _safe_print("Usando IA para generar el plan de prueba...")
             return _plan_with_ai(prompt, api_key, model_name, base_url)
         except Exception as e:
-            _safe_print(f"Fallo la IA ({e}), propagando error.")
-            raise Exception(f"Fallo en la API de IA: {e}")
+            raise Exception(f"Error en IA: {e}")
 
-    _safe_print("Generando plan basico (modo sin IA)...")
     return _fallback_plan(prompt)
