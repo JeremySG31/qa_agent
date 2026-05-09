@@ -1259,8 +1259,14 @@ with tab_builder:
         placeholder='Ej: "Abre https://wikipedia.org y busca Python"',
 
         height=80
-
     )
+
+    st.markdown("""
+    <div style="background:rgba(34,211,238,0.05); border:1px solid rgba(34,211,238,0.2); border-radius:8px; padding:10px 14px; margin-bottom:15px;">
+        <p style="margin:0; font-size:0.8rem; color:#22d3ee; font-weight:600;">💡 Tip para el éxito:</p>
+        <p style="margin:0; font-size:0.75rem; color:#94a3b8;">Sé específico con los nombres de botones, incluye la URL y menciona si hay avisos de cookies.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     if "ai_generations_count" not in st.session_state:
         st.session_state.ai_generations_count = 0
