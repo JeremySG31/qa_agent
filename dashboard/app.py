@@ -857,14 +857,21 @@ with tab_run:
                         elif et == "step_done":
                             r   = event["result"]
                             ok  = r["status"] == "ok"
-                            ic  = "ok" if ok else "x"
                             css = "step-ok" if ok else "step-err"
-                            act = r.get("action", "")
-                            det = r.get("detail", "")
+                            act = r.get("action","")
+                            det = r.get("detail","")
                             st.markdown(
-                                f'<div class="step-item {css}"><span class="step-icon">{ic}</span>'
+                                f'<div class="step-item {css}"><span class="step-icon">{"ok" if ok else "x"}</span>'
                                 f'<span class="step-text"><span class="step-action">[{act}]</span>{det}</span></div>',
                                 unsafe_allow_html=True)
+                            
+                            if "screenshot" in r:
+                                import base64
+                                try:
+                                    st.image(base64.b64decode(r["screenshot"]))
+                                except Exception:
+                                    pass
+
                         elif et == "driver_error":
                             st.error(event["message"])
                         elif et == "complete":
@@ -878,10 +885,19 @@ with tab_run:
 
                 if result_holder:
                     umail = st.session_state.get("user_email", "invitado@qa-agent.local")
+                    
+                    # Limpiar Base64 antes de guardar para no exceder límite de 1MB de Firestore
+                    clean_steps = []
+                    for s in result_holder.get("steps", []):
+                        clean_s = s.copy()
+                        if "screenshot" in clean_s:
+                            del clean_s["screenshot"]
+                        clean_steps.append(clean_s)
+
                     _save({
                         "test_name": final_name,
                         "status":    result_holder.get("status", "FAIL"),
-                        "steps":     result_holder.get("steps", []),
+                        "steps":     clean_steps,
                         "error":     result_holder.get("error", ""),
                     }, user_id=umail)
 
@@ -1044,7 +1060,7 @@ with tab_builder:
                 val    = s.get("value","")
                 sel    = s.get("selector","")
                 detail = val if val else sel
-                c_num, c_info, c_up, c_dn, c_del = st.columns([0.5, 6, 0.6, 0.6, 0.6])
+                c_num, c_info, c_up, c_dn, c_del = st.columns([0.5, 5.5, 0.8, 0.8, 0.8])
                 with c_num:
                     st.markdown(f"<div style='color:#818cf8;font-family:JetBrains Mono,monospace;font-size:.85rem;padding-top:8px;'>{i+1}</div>", unsafe_allow_html=True)
                 with c_info:
@@ -1054,15 +1070,15 @@ with tab_builder:
                         f'<span style="color:#94a3b8">{detail}</span></div>',
                         unsafe_allow_html=True)
                 with c_up:
-                    if i > 0 and st.button("up", key=f"up_{i}", help="Subir"):
+                    if i > 0 and st.button("↑", key=f"up_{i}", help="Subir", use_container_width=True):
                         custom_steps[i-1], custom_steps[i] = custom_steps[i], custom_steps[i-1]
                         st.rerun()
                 with c_dn:
-                    if i < len(custom_steps)-1 and st.button("dn", key=f"dn_{i}", help="Bajar"):
+                    if i < len(custom_steps)-1 and st.button("↓", key=f"dn_{i}", help="Bajar", use_container_width=True):
                         custom_steps[i], custom_steps[i+1] = custom_steps[i+1], custom_steps[i]
                         st.rerun()
                 with c_del:
-                    if st.button("x", key=f"del_{i}", help="Eliminar"):
+                    if st.button("×", key=f"del_{i}", help="Eliminar", use_container_width=True):
                         st.session_state.custom_steps.pop(i)
                         st.rerun()
 
@@ -1125,6 +1141,14 @@ with tab_builder:
                             f'<div class="step-item {css}"><span class="step-icon">{"ok" if ok else "x"}</span>'
                             f'<span class="step-text"><span class="step-action">[{act}]</span>{det}</span></div>',
                             unsafe_allow_html=True)
+                        
+                        if "screenshot" in r:
+                            import base64
+                            try:
+                                st.image(base64.b64decode(r["screenshot"]))
+                            except Exception:
+                                pass
+
                     elif et == "driver_error":
                         st.error(event["message"])
                     elif et == "complete":
