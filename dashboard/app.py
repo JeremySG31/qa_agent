@@ -489,6 +489,22 @@ def show_profile():
     </div>
     """, unsafe_allow_html=True)
 
+@st.dialog("⚠️ ¿Eliminar historial?")
+def confirm_clear_history():
+    st.warning("Esta acción eliminará permanentemente todos tus resultados de la base de datos. No se puede deshacer.")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Sí, eliminar todo", use_container_width=True, type="primary"):
+            u_email = st.session_state.get("user_email", "invitado@qa-agent.local")
+            from agent.reporter import clear_results
+            n = clear_results(user_id=u_email)
+            get_cached_results.clear() # Limpiar cache
+            st.success(f"Historial borrado.")
+            st.rerun()
+    with c2:
+        if st.button("Cancelar", use_container_width=True):
+            st.rerun()
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def render_steps(steps):
     for step in steps:
@@ -703,14 +719,8 @@ with st.sidebar:
 
     # ── Acciones rápidas ───────────────────────────────────────────
     st.markdown("### Panel")
-    if st.button("Refrescar resultados", use_container_width=True):
-        st.rerun()
-
-    if st.button("Limpiar todos los resultados", use_container_width=True):
-        u_email = st.session_state.get("user_email", "invitado@qa-agent.local")
-        n = clear_results(user_id=u_email)
-        st.success(f"Eliminados {n} resultados.")
-        st.rerun()
+    if st.button("🗑️ Limpiar historial", use_container_width=True):
+        confirm_clear_history()
 
     st.markdown("---")
     st.markdown("**Ejemplos de prompts:**")
