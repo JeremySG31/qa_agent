@@ -741,173 +741,38 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS PRINCIPALES
 # ══════════════════════════════════════════════════════════════════════════════
-tab_run, tab_builder, tab_results = st.tabs([
-    "Ejecutar Test",
-    "Constructor Visual",
+tab_builder, tab_results = st.tabs([
+    "Constructor de Pruebas",
     "Historial de Resultados",
 ])
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# TAB 1 - EJECUTAR TEST CON IA
-# ────────────────────────────────────────────────────────────────────────────
-with tab_run:
-    st.markdown('<div class="section-title">Describe que quieres probar</div>', unsafe_allow_html=True)
-
-    col_left, col_right = st.columns([3, 2])
-    with col_left:
-        default_prompt = st.session_state.pop("sidebar_prompt", "")
-        is_ai_active = bool(st.session_state.get("ai_enabled") and st.session_state.get("ai_config", {}).get("api_key"))
-
-        test_url = st.text_input(
-            "URL del sitio a probar" if is_ai_active else "URL a verificar (Modo Basico)",
-            placeholder="https://mi-sitio.com",
-        )
-
-        if is_ai_active:
-            prompt = st.text_area(
-                "Que quieres probar? (Lenguaje Natural con IA)",
-                value=default_prompt,
-                placeholder='Ej: "prueba el formulario de login con usuario admin y clave test123"',
-                height=120,
-            )
-        else:
-            prompt = ""
-            st.text_area(
-                "Generador de pruebas con IA",
-                placeholder='La IA está desactivada.\n\n👉 Para usar lenguaje natural: Ve al menú izquierdo y activa la IA con tu propia API Key.\n\n👉 Para usuarios invitados: Recomendamos crear una cuenta gratuita para poder guardar tu configuración de IA de forma permanente.',
-                height=120,
-                disabled=True
-            )
-            st.info("💡 **Tip:** Puedes crear pruebas manualmente sin IA usando la pestaña **Constructor Visual**.")
-
-
-        test_name = st.text_input("Nombre del test (opcional)", placeholder="Mi Test")
-
-    with col_right:
-        st.info("🤖 **¿Qué hace esta herramienta?**\nNuestro robot leerá tu instrucción, abrirá el sitio web y realizará todas las acciones automáticamente paso a paso.")
-        st.markdown("**Ajustes (Opcional)**")
-        step_timeout = st.select_slider("Tiempo de espera para cargar (seg)", options=[5, 10, 15, 20, 30], value=15, help="Aumenta esto si la página que vas a probar es muy lenta.")
-        step_delay   = st.select_slider("Pausa entre clics (seg)", options=[0.0, 0.5, 1.0, 2.0], value=0.5, help="Si es muy rápido, aumentalo para ver con claridad lo que hace el robot.")
-        st.markdown("")
-        run_btn = st.button("🚀 Iniciar Prueba Automática", type="primary", use_container_width=True)
-
-    st.markdown("---")
-
-    if run_btn:
-        if user_email == "invitado@qa-agent.local" and total >= 10:
-            st.error("🛑 **Límite Alcanzado:** Has llegado al límite de 10 pruebas gratuitas como invitado. ¡Por favor regístrate para continuar usando QA Agent sin límites!")
-            st.stop()
-        if not prompt.strip() and not test_url.strip():
-            st.warning("Escribe un prompt o indica una URL.")
-        else:
-            full_prompt = prompt.strip() or "verifica disponibilidad"
-            if test_url.strip():
-                full_prompt = full_prompt + " en " + test_url.strip()
-
-            with st.spinner("Generando plan con IA..." if is_ai_active else "Generando plan basico..."):
-                active_config = st.session_state.ai_config if st.session_state.ai_enabled else {}
-                try:
-                    steps = generate_test_plan(full_prompt, api_key=active_config.get("api_key"), model_name=active_config.get("model", "gemini-2.0-flash"), base_url=active_config.get("base_url"))
-                except Exception as e:
-                    st.error(str(e))
-                    st.stop()
-
-            st.session_state.plan_preview = steps
-            n = len(steps)
-            st.markdown(
-                f'<div class="plan-preview"><div style="color:#22d3ee;font-weight:700;margin-bottom:8px;font-size:.9rem">Plan generado - {n} pasos</div>',
-                unsafe_allow_html=True)
-            render_plan_preview(steps)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-            if True:
-                import importlib
-                from agent import executor_web
-                importlib.reload(executor_web)
-                from agent.reporter import save_result as _save
-                final_name    = test_name.strip() or ("Test: " + full_prompt[:50])
-                result_holder = {}
-                
-                user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
-                if "invitado_" in user_email_check and len(steps) > 7:
-                    st.error("🛑 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba para prevenir abusos. Por favor, acorta tu prueba o inicia sesión.")
-                    st.stop()
-
-                with st.status("Ejecutando: " + final_name, expanded=True) as live_status:
-                    for event in executor_web.run_test_streaming(
-                        final_name, steps, timeout=step_timeout,
-                        step_delay=step_delay, screenshot_on_fail=False,
-                    ):
-                        et = event.get("type")
-                        if et == "start":
-                            total = event["total"]
-                            st.markdown(
-                                f'<span style="color:#64748b;font-family:JetBrains Mono,monospace;font-size:.8rem">Iniciando Test - {total} pasos</span>',
-                                unsafe_allow_html=True)
-                        elif et == "step_start":
-                            idx = event["index"]
-                            tot = event["total"]
-                            act = event["step"].get("action", "")
-                            st.markdown(
-                                f'<span style="color:#818cf8;font-family:JetBrains Mono,monospace;font-size:.78rem">Paso [{idx}/{tot}] {act}...</span>',
-                                unsafe_allow_html=True)
-                        elif et == "step_done":
-                            r   = event["result"]
-                            ok  = r["status"] == "ok"
-                            css = "step-ok" if ok else "step-err"
-                            act = r.get("action","")
-                            det = r.get("detail","")
-                            st.markdown(
-                                f'<div class="step-item {css}"><span class="step-icon">{"ok" if ok else "x"}</span>'
-                                f'<span class="step-text"><span class="step-action">[{act}]</span>{det}</span></div>',
-                                unsafe_allow_html=True)
-                            
-                            if "screenshot" in r:
-                                import base64
-                                try:
-                                    st.image(base64.b64decode(r["screenshot"]))
-                                except Exception:
-                                    pass
-
-                        elif et == "driver_error":
-                            st.error(event["message"])
-                        elif et == "complete":
-                            result_holder.update(event)
-
-                    if result_holder.get("status") == "PASS":
-                        live_status.update(label="PASS - " + final_name, state="complete", expanded=False)
-                    else:
-                        err = result_holder.get("error", "")
-                        live_status.update(label="FAIL - " + err, state="error", expanded=True)
-
-                if result_holder:
-                    umail = st.session_state.get("user_email", "invitado@qa-agent.local")
-                    
-                    # Limpiar Base64 antes de guardar para no exceder límite de 1MB de Firestore
-                    clean_steps = []
-                    for s in result_holder.get("steps", []):
-                        clean_s = s.copy()
-                        if "screenshot" in clean_s:
-                            del clean_s["screenshot"]
-                        clean_steps.append(clean_s)
-
-                    _save({
-                        "test_name": final_name,
-                        "status":    result_holder.get("status", "FAIL"),
-                        "steps":     clean_steps,
-                        "error":     result_holder.get("error", ""),
-                    }, user_id=umail)
-
-    elif st.session_state.plan_preview:
-        st.markdown("**Ultimo plan generado:**")
-        render_plan_preview(st.session_state.plan_preview)
-
-# ────────────────────────────────────────────────────────────────────────────
 # TAB 2 - CONSTRUCTOR VISUAL
 # ────────────────────────────────────────────────────────────────────────────
 with tab_builder:
-    st.markdown('<div class="section-title">Constructor visual de pasos</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">1. Generador con IA</div>', unsafe_allow_html=True)
+    default_prompt = st.session_state.pop("sidebar_prompt", "")
+    is_ai_active = bool(st.session_state.get("ai_enabled") and st.session_state.get("ai_config", {}).get("api_key"))
+    if is_ai_active:
+        ai_full_prompt = st.text_area("Describe que quieres probar en lenguaje natural", value=default_prompt, placeholder='Ej: "Abre https://wikipedia.org y busca Python"', height=80)
+        if st.button("✨ Generar todos los pasos con IA", use_container_width=True):
+            if ai_full_prompt.strip():
+                with st.spinner("Generando pasos..."):
+                    try:
+                        cfg = st.session_state.ai_config
+                        new_steps = generate_test_plan(ai_full_prompt, api_key=cfg.get("api_key"), model_name=cfg.get("model", "gemini-2.0-flash"), base_url=cfg.get("base_url"))
+                        st.session_state.custom_steps = new_steps  # Replaces existing steps
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
+            else:
+                st.warning("Escribe una instrucción primero.")
+    else:
+        st.info("💡 **Tip:** Para generar pruebas complejas automáticamente con lenguaje natural, activa la IA en el menú izquierdo.")
+
+    st.markdown("---")
+    st.markdown('<div class="section-title">2. Constructor Visual</div>', unsafe_allow_html=True)
     st.caption("Crea un test paso a paso sin codigo. Incluye acciones avanzadas: hover, scroll, teclas, capturas y mas.")
 
     col_b1, col_b2 = st.columns([2, 3])
@@ -1006,39 +871,7 @@ with tab_builder:
                 st.rerun()
 
         st.markdown("---")
-        st.markdown("**2. Anadir pasos con IA**")
-        is_ai = bool(st.session_state.get("ai_enabled") and st.session_state.get("ai_config", {}).get("api_key"))
-        if is_ai:
-            ai_p = st.text_area("Describe la accion en lenguaje natural", placeholder="Ej: escribe 'admin' en el campo usuario y pulsa Enter", height=80, key="ai_step_prompt")
-            if st.button("Generar paso con IA", use_container_width=True):
-                if ai_p.strip():
-                    with st.spinner("Interpretando accion..."):
-                        try:
-                            cfg = st.session_state.get("ai_config", {}); new_steps = generate_test_plan(ai_p, api_key=cfg.get("api_key"), model_name=cfg.get("model", "gemini-2.0-flash"), base_url=cfg.get("base_url"))
-                            if new_steps:
-                                st.session_state.custom_steps.extend(new_steps)
-                                st.rerun()
-                        except Exception as e:
-                            st.error(str(e))
-                else:
-                    st.warning("Escribe una instruccion primero.")
-        else:
-            st.text_area("IA desactivada", placeholder="Activa tu API Key de IA en el panel lateral.", height=60, disabled=True, key="ai_step_disabled")
-
-        st.markdown("---")
-        b_test_name = st.text_input("Nombre de la prueba", placeholder="Ej: Comprar un producto", key="b_name")
-        st.markdown("**Ajustes de velocidad**")
-        b_timeout  = st.select_slider("Tiempo límite de carga (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
-        b_delay    = st.select_slider("Pausa entre cada paso (seg)", options=[0.0,0.5,1.0,2.0], value=0.5, key="b_delay")
-
-        cr1, cr2 = st.columns(2)
-        with cr1:
-            if st.button("Limpiar pasos", use_container_width=True):
-                st.session_state.custom_steps = []
-                st.rerun()
-        with cr2:
-            run_custom = st.button("Ejecutar", type="primary", use_container_width=True)
-
+        
     with col_b2:
         st.markdown("**Pasos del test**")
         custom_steps = st.session_state.custom_steps
@@ -1048,10 +881,9 @@ with tab_builder:
                 '<div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;'
                 'padding:30px;text-align:center;color:#475569;">'
                 '<div style="font-size:2rem;margin-bottom:8px">+</div>'
-                '<div>No hay pasos aun. Anade acciones desde el panel izquierdo.</div>'
+                '<div>No hay pasos aun. Anade acciones desde el panel izquierdo o genéralos con IA.</div>'
                 '</div>',
                 unsafe_allow_html=True)
-
         else:
             for i, s in enumerate(custom_steps):
                 act    = s.get("action","")
