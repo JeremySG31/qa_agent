@@ -89,12 +89,23 @@ def _build_driver(headless: bool = True):
     for browser in browsers_to_try:
         try:
             if browser == "chrome":
+                import shutil
                 options = ChromeOptions()
                 if headless: options.add_argument("--headless=new")
                 options.add_argument("--log-level=3")
                 options.add_argument("--no-sandbox")
                 options.add_argument("--disable-dev-shm-usage")
-                if CHROME_MANAGER_AVAILABLE:
+                
+                chromium_path = shutil.which("chromium")
+                if chromium_path:
+                    options.binary_location = chromium_path
+
+                chromedriver_path = shutil.which("chromedriver")
+                
+                if chromedriver_path:
+                    service = ChromeService(executable_path=chromedriver_path)
+                    driver = webdriver.Chrome(service=service, options=options)
+                elif CHROME_MANAGER_AVAILABLE:
                     service = ChromeService(ChromeDriverManager().install())
                     driver = webdriver.Chrome(service=service, options=options)
                 else:
