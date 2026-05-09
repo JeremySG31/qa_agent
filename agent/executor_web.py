@@ -98,11 +98,11 @@ def _build_driver(headless: bool = True):
                 options.add_argument("--window-size=1920,1080")
                 
                 # Intentar detectar Chromium en Linux/Streamlit Cloud
-                chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
+                chromium_path = shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome")
                 if chromium_path:
                     options.binary_location = chromium_path
 
-                chromedriver_path = shutil.which("chromedriver")
+                chromedriver_path = shutil.which("chromedriver") or shutil.which("chromium-chromedriver")
                 
                 try:
                     if chromedriver_path:
