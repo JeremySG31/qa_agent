@@ -566,19 +566,35 @@ with st.sidebar:
     st.markdown("---")
 
     # ── Perfil de Usuario ──────────────────────────────────────────
-    if st.button("Mi Perfil", use_container_width=True):
-        show_profile()
-    if st.button("Cerrar Sesión", use_container_width=True):
-        st.session_state.user_logged_in = False
-        st.session_state.user_email = ""
-        st.session_state.firebase_id_token = ""
-        st.session_state.ai_config = {}
-        st.session_state.is_guest = False
-        try:
-            st.query_params.clear()
-        except Exception:
-            pass
-        st.rerun()
+    current_email = st.session_state.get("user_email", "")
+    is_guest_mode = "invitado_" in current_email
+
+    if is_guest_mode:
+        if st.button("Salir del Modo Invitado", use_container_width=True):
+            st.session_state.user_logged_in = False
+            st.session_state.user_email = ""
+            st.session_state.firebase_id_token = ""
+            st.session_state.ai_config = {}
+            st.session_state.is_guest = False
+            try:
+                st.query_params.clear()
+            except Exception:
+                pass
+            st.rerun()
+    else:
+        if st.button("Mi Perfil", use_container_width=True):
+            show_profile()
+        if st.button("Cerrar Sesión", use_container_width=True):
+            st.session_state.user_logged_in = False
+            st.session_state.user_email = ""
+            st.session_state.firebase_id_token = ""
+            st.session_state.ai_config = {}
+            st.session_state.is_guest = False
+            try:
+                st.query_params.clear()
+            except Exception:
+                pass
+            st.rerun()
     st.markdown("---")
 
     # ── Configuración de IA ────────────────────────────────────────
@@ -900,11 +916,11 @@ with tab_builder:
                         f'<span style="color:#94a3b8">{detail}</span></div>',
                         unsafe_allow_html=True)
                 with c_up:
-                    if i > 0 and st.button("↑", key=f"up_{i}", help="Subir", use_container_width=True):
+                    if st.button("↑", key=f"up_{i}", help="Subir", use_container_width=True, disabled=(i == 0)):
                         custom_steps[i-1], custom_steps[i] = custom_steps[i], custom_steps[i-1]
                         st.rerun()
                 with c_dn:
-                    if i < len(custom_steps)-1 and st.button("↓", key=f"dn_{i}", help="Bajar", use_container_width=True):
+                    if st.button("↓", key=f"dn_{i}", help="Bajar", use_container_width=True, disabled=(i == len(custom_steps)-1)):
                         custom_steps[i], custom_steps[i+1] = custom_steps[i+1], custom_steps[i]
                         st.rerun()
                 with c_del:

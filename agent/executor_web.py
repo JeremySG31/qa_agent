@@ -329,9 +329,10 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 
         # ── Captura ─────────────────────────────────────────────────────────
         elif action == "screenshot":
-            # Si no hay carpeta de resultados, solo informamos que se tomo (en memoria)
+            base64_img = driver.get_screenshot_as_base64()
             result["status"] = "ok"
-            result["detail"] = "Captura realizada (omitiendo guardado local por configuración)"
+            result["detail"] = "Captura realizada"
+            result["screenshot"] = base64_img
 
         else:
             result["status"] = "error"
