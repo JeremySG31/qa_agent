@@ -566,15 +566,14 @@ with st.sidebar:
     st.markdown("---")
 
     # ── Perfil de Usuario ──────────────────────────────────────────
-    if st.button("👤 Mi Perfil", use_container_width=True):
+    if st.button("Mi Perfil", use_container_width=True):
         show_profile()
-    if st.button("🚪 Cerrar Sesión", use_container_width=True):
+    if st.button("Cerrar Sesión", use_container_width=True):
         st.session_state.user_logged_in = False
         st.session_state.user_email = ""
         st.session_state.firebase_id_token = ""
         st.session_state.ai_config = {}
         st.session_state.is_guest = False
-        # Limpiar el param de la URL para que no vuelva a restaurarse la sesión
         try:
             st.query_params.clear()
         except Exception:
@@ -636,7 +635,7 @@ with st.sidebar:
             key=input_key
         )
         
-        if st.button("💾 Guardar Configuración", use_container_width=True):
+        if st.button("Guardar Configuración", use_container_width=True):
             new_config = {
                 "provider": provider,
                 "model": model,
@@ -649,25 +648,25 @@ with st.sidebar:
             if "error" in save_res:
                 msg_h.error(firebase_error_message(save_res.get("error", {}).get("message", "Error desconocido")))
             else:
-                msg_h.success("¡Configuración guardada!")
+                msg_h.success("Configuración guardada")
             import time
             time.sleep(2)
             msg_h.empty()
             st.rerun()
         
-        if st.button("🗑️ Eliminar Key", use_container_width=True):
+        if st.button("Eliminar Key", use_container_width=True):
             st.session_state.ai_config = {}
             st.session_state.key_version += 1 # Forzar a Streamlit a recrear el widget
             save_res = firebase_save_settings(st.session_state.user_email, {})
-            st.warning("Configuración eliminada de la base de datos.")
+            st.warning("Configuración eliminada.")
             import time
             time.sleep(1.5)
             st.rerun()
             
         if st.session_state.get("ai_config", {}).get("api_key") and st.session_state.get("ai_enabled"):
-            st.success("✅ IA Activada")
+            st.success("IA Activada")
         elif not st.session_state.get("ai_enabled"):
-            st.info("⏸️ IA Pausada (Modo básico)")
+            st.info("IA Pausada")
 
             st.session_state.ai_config = {}
 
@@ -685,7 +684,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown("**💡 Ejemplos de prompts:**")
+    st.markdown("**Ejemplos de prompts:**")
     examples = [
         "prueba el login de esta página",
         "verifica que el formulario de registro funciona",
@@ -694,7 +693,7 @@ with st.sidebar:
         "prueba login con credenciales inválidas",
     ]
     for ex in examples:
-        if st.button(f"↗ {ex}", key=f"ex_{ex}", use_container_width=True):
+        if st.button(f"{ex}", key=f"ex_{ex}", use_container_width=True):
             st.session_state["sidebar_prompt"] = ex
             st.rerun()
 
@@ -782,16 +781,17 @@ with tab_run:
                 help="Sin IA, el sistema no puede interpretar lenguaje natural. Usa el Constructor Visual para pruebas complejas gratuitas."
             )
             st.info("💡 La IA está apagada. Configura tu **API Key** en el panel lateral o usa el **Constructor Visual**.")
+            st.info("La IA está apagada. Configura tu API Key en el panel lateral o usa el Constructor Visual.")
 
 
         test_name = st.text_input("Nombre del test (opcional)", placeholder="Mi Test")
 
     with col_right:
         st.markdown("**Opciones de ejecucion**")
-        headless           = st.checkbox("Modo headless (sin ventana)", value=True)
-        st.markdown("**Ajustes avanzados**")
-        step_timeout       = st.select_slider("Timeout por elemento (seg)", options=[5, 10, 15, 20, 30], value=15)
-        step_delay         = st.select_slider("Pausa entre pasos (seg)",    options=[0.0, 0.3, 0.5, 1.0, 2.0], value=0.3)
+        b_incognito = st.checkbox("Modo Incógnito", value=False)
+        b_highlight = st.checkbox("Resaltar elementos", value=True)
+        b_timeout   = st.select_slider("Timeout (seg)", options=[5, 10, 15, 20, 30], value=15)
+        b_delay     = st.select_slider("Delay (seg)", options=[0.0, 0.5, 1.0, 2.0], value=0.5)
         st.markdown("")
         run_btn = st.button("Generar y Ejecutar Test", type="primary", use_container_width=True)
 
@@ -840,15 +840,14 @@ with tab_run:
                 with st.status("Ejecutando: " + final_name, expanded=True) as live_status:
                     for event in executor_web.run_test_streaming(
                         final_name, steps,
-                        headless=headless, timeout=step_timeout,
+                        incognito=incognito, highlight=highlight, timeout=step_timeout,
                         step_delay=step_delay, screenshot_on_fail=False,
                     ):
                         et = event.get("type")
                         if et == "start":
-                            mode = "headless" if headless else "ventana visible"
                             total = event["total"]
                             st.markdown(
-                                f'<span style="color:#64748b;font-family:JetBrains Mono,monospace;font-size:.8rem">Iniciando {mode} - {total} pasos</span>',
+                                f'<span style="color:#64748b;font-family:JetBrains Mono,monospace;font-size:.8rem">Iniciando Test - {total} pasos</span>',
                                 unsafe_allow_html=True)
                         elif et == "step_start":
                             idx = event["index"]
@@ -1016,11 +1015,14 @@ with tab_builder:
 
         st.markdown("---")
         b_test_name = st.text_input("Nombre del test", placeholder="Mi Test Personalizado", key="b_name")
-        b_headless  = st.checkbox("Headless (sin ventana)", value=True, key="b_headless")
+        col_b_opt1, col_b_opt2 = st.columns(2)
+        with col_b_opt1:
+            b_incognito = st.checkbox("Incógnito", value=False, key="b_incognito")
+        with col_b_opt2:
+            b_highlight = st.checkbox("Resaltar", value=True, key="b_highlight")
         st.markdown("**Ajustes de ejecucion**")
         b_timeout  = st.select_slider("Timeout (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
-        b_delay    = st.select_slider("Pausa entre pasos", options=[0.0,0.3,0.5,1.0,2.0], value=0.3, key="b_delay")
-        b_ss_fail  = st.checkbox("Captura al fallar", value=False, key="b_ss_fail")
+        b_delay    = st.select_slider("Pausa entre pasos", options=[0.0,0.5,1.0,2.0], value=0.5, key="b_delay")
 
         cr1, cr2 = st.columns(2)
         with cr1:
@@ -1110,13 +1112,12 @@ with tab_builder:
             with st.status("Ejecutando: " + name, expanded=True) as live_status:
                 for event in executor_web.run_test_streaming(
                     name, custom_steps,
-                    headless=b_headless, timeout=b_timeout,
-                    step_delay=b_delay, screenshot_on_fail=b_ss_fail,
+                    incognito=b_incognito, highlight=b_highlight, timeout=b_timeout,
+                    step_delay=b_delay, screenshot_on_fail=False,
                 ):
                     et = event.get("type")
                     if et == "start":
-                        mode = "headless" if b_headless else "ventana visible"
-                        st.markdown(f'<span style="color:#64748b;font-family:JetBrains Mono,monospace;font-size:.8rem">Iniciando {mode} - {event["total"]} pasos</span>', unsafe_allow_html=True)
+                        st.markdown(f'<span style="color:#64748b;font-family:JetBrains Mono,monospace;font-size:.8rem">Iniciando Test - {event["total"]} pasos</span>', unsafe_allow_html=True)
                     elif et == "step_start":
                         idx = event["index"]
                         tot = event["total"]

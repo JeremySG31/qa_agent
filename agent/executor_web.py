@@ -79,8 +79,12 @@ def _get_default_browser():
     return "chrome"
 
 
-def _build_driver(headless: bool = True):
-    """Intenta iniciar el navegador predeterminado del sistema."""
+def _build_driver(incognito: bool = False):
+    """
+    Inicializa el driver (Chrome o Edge).
+    El modo headless ahora es automático (solo en Linux).
+    Si incognito=True, inicia el navegador en modo privado.
+    """
     default = _get_default_browser()
     browsers_to_try = [default]
     for b in ["chrome", "edge"]:
@@ -95,14 +99,16 @@ def _build_driver(headless: bool = True):
                 options = ChromeOptions()
                 is_linux = platform.system() == "Linux"
                 
-                # En Linux (Streamlit Cloud), forzamos servidor-seguro sin importar qué pida la UI
-                if headless or is_linux: 
+                # En Linux (Streamlit Cloud), forzamos headless para evitar crashes
+                if is_linux: 
                     options.add_argument("--headless=new")
                     options.add_argument("--no-sandbox")
                     options.add_argument("--disable-dev-shm-usage")
                     options.add_argument("--disable-gpu")
                 options.add_argument("--log-level=3")
                 options.add_argument("--window-size=1920,1080")
+                if incognito:
+                    options.add_argument("--incognito")
                 
                 # Intentar detectar Chromium en Linux/Streamlit Cloud
                 chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
@@ -140,13 +146,15 @@ def _build_driver(headless: bool = True):
                 options = EdgeOptions()
                 is_linux = platform.system() == "Linux"
                 
-                if headless or is_linux: 
+                if is_linux: 
                     options.add_argument("--headless=new")
                     options.add_argument("--no-sandbox")
                     options.add_argument("--disable-dev-shm-usage")
                     options.add_argument("--disable-gpu")
                 options.add_argument("--log-level=3")
                 options.add_argument("--window-size=1920,1080")
+                if incognito:
+                    options.add_argument("-inPrivate")
                 
                 try:
                     # 1. Intentar Selenium Manager nativo primero (evita errores de red de webdriver-manager)
@@ -225,21 +233,37 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
             result["detail"] = f"Abrio: {value}"
 
         # ── Interacción con elementos ───────────────────────────────────────
-        elif action == "find_and_type":
-            element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-            element.clear()
-            element.send_keys(value)
-            result["status"] = "ok"
-            result["detail"] = f"Escribio '{value}' en '{selector}'"
-
-        elif action == "click":
+        elif action in ("click", "find_and_type", "select_option"):
             element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
-            element.click()
+            
+            # Resaltar elemento si está activado
+            if highlight:
+                driver.execute_script("arguments[0].style.border='3px solid red'", element)
+                time.sleep(0.3)
+                driver.execute_script("arguments[0].style.border=''", element)
+            
+            if action == "click":
+                element.click()
+                result["detail"] = f"Hizo clic en '{selector}'"
+            elif action == "find_and_type":
+                element.clear()
+                element.send_keys(value)
+                result["detail"] = f"Escribio '{value}' en '{selector}'"
+            elif action == "select_option":
+                sel_obj = Select(element)
+                try:
+                    sel_obj.select_by_visible_text(value)
+                except Exception:
+                    sel_obj.select_by_value(value)
+                result["detail"] = f"Seleccionado '{value}' en '{selector}'"
             result["status"] = "ok"
-            result["detail"] = f"Hizo clic en '{selector}'"
 
         elif action == "hover":
             element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+            if highlight:
+                driver.execute_script("arguments[0].style.border='3px solid red'", element)
+                time.sleep(0.3)
+                driver.execute_script("arguments[0].style.border=''", element)
             ActionChains(driver).move_to_element(element).perform()
             time.sleep(0.3)
             result["status"] = "ok"
@@ -254,16 +278,6 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                 ActionChains(driver).send_keys(key).perform()
             result["status"] = "ok"
             result["detail"] = f"Tecla '{value}' presionada" + (f" en '{selector}'" if selector else "")
-
-        elif action == "select_option":
-            element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-            sel_obj = Select(element)
-            try:
-                sel_obj.select_by_visible_text(value)
-            except Exception:
-                sel_obj.select_by_value(value)
-            result["status"] = "ok"
-            result["detail"] = f"Seleccionado '{value}' en '{selector}'"
 
         # ── Scroll ──────────────────────────────────────────────────────────
         elif action == "scroll_to":
@@ -359,12 +373,15 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 def run_test(
     test_name: str,
     steps: list[dict],
-    headless: bool = True,
+    incognito: bool = False,
+    highlight: bool = False,
     timeout: int = 15,
-    step_delay: float = 0.3,
+    step_delay: float = 0.5,
     screenshot_on_fail: bool = False,
 ) -> dict:
-    """Ejecuta todos los pasos de una prueba web y devuelve el reporte."""
+    """
+    Ejecuta todos los pasos de una prueba de forma síncrona.
+    """
     driver = None
     executed_steps = []
     overall_status = "PASS"
@@ -374,14 +391,14 @@ def run_test(
     WAIT_TIMEOUT = timeout
 
     try:
-        driver = _build_driver(headless=headless)
+        driver = _build_driver(incognito=incognito)
         wait   = WebDriverWait(driver, timeout)
         _safe_print(f"Ejecutando: {test_name} ({len(steps)} pasos)")
 
         test_context = {}
         for i, step in enumerate(steps, 1):
             _safe_print(f"   Paso {i}/{len(steps)}: {step.get('action')} ...")
-            result = _execute_step(driver, step, wait, test_context, screenshot_on_fail=screenshot_on_fail)
+            result = _execute_step(driver, step, wait, test_context, highlight=highlight, screenshot_on_fail=screenshot_on_fail)
             executed_steps.append(result)
             if result["status"] == "error":
                 overall_status = "FAIL"
@@ -416,14 +433,14 @@ def run_test(
 def run_test_streaming(
     test_name: str,
     steps: list[dict],
-    headless: bool = True,
+    incognito: bool = False,
+    highlight: bool = False,
     timeout: int = 15,
-    step_delay: float = 0.3,
+    step_delay: float = 0.5,
     screenshot_on_fail: bool = False,
 ):
     """
-    Generator que yield-ea eventos en tiempo real conforme avanza el test.
-    Eventos: start | step_start | step_done | driver_error | complete
+    Versión generadora para iterar y mostrar resultados en tiempo real en la UI.
     """
     driver = None
     executed_steps = []
@@ -433,17 +450,19 @@ def run_test_streaming(
     global WAIT_TIMEOUT
     WAIT_TIMEOUT = timeout
 
+    yield {"type": "start", "total": len(steps)}
+
     try:
-        driver = _build_driver(headless=headless)
+        driver = _build_driver(incognito=incognito)
         wait   = WebDriverWait(driver, timeout)
 
-        yield {"type": "start", "test_name": test_name, "total": len(steps), "headless": headless}
+        yield {"type": "start", "test_name": test_name, "total": len(steps)}
 
         test_context = {}
         for i, step in enumerate(steps, 1):
             yield {"type": "step_start", "index": i, "total": len(steps), "step": step}
 
-            result = _execute_step(driver, step, wait, test_context, screenshot_on_fail=screenshot_on_fail)
+            result = _execute_step(driver, step, wait, test_context, highlight=highlight, screenshot_on_fail=screenshot_on_fail)
             executed_steps.append(result)
 
             if result["status"] == "error":
