@@ -1,15 +1,45 @@
 """
-planner.py - Modulo del agente LLM
-Convierte prompts en lenguaje natural a pasos de prueba estructurados.
-Intenta usar Gemini API; si no esta disponible, usa respuestas simuladas.
+planner.py - Módulo del agente LLM
+Usa OpenRouter (modelo gratuito) como proveedor centralizado de IA.
+La API key es del servidor; los usuarios no necesitan configurar nada.
 """
 
 import os
 import json
 import re
+import requests
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+
+# Modelo gratuito de OpenRouter (sin costo por token)
+# Opciones probadas y funcionales:
+#   openai/gpt-oss-120b:free              - Más completo, genera flujos detallados
+#   openai/gpt-oss-20b:free              - Rápido pero planes simples
+#   nvidia/nemotron-3-super-120b-a12b:free - Alternativa
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
+# Modelos de respaldo si el principal falla
+FALLBACK_MODELS = [
+    "openai/gpt-oss-120b:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "openai/gpt-oss-20b:free",
+]
+
+SYSTEM_INSTRUCTION = (
+    "Eres un experto en QA automatizado con Selenium. "
+    "Tu tarea es generar un plan de prueba COMPLETO que cubra TODOS los pasos necesarios para ejecutar la accion del usuario. "
+    "Responde UNICAMENTE con un array JSON de objetos, sin texto adicional, sin markdown, sin explicaciones. "
+    'Ejemplo para buscar en google: [{"action": "open_url", "value": "https://google.com"}, {"action": "find_and_type", "selector": "input[name=q]", "value": "python"}, {"action": "press_key", "selector": "input[name=q]", "value": "enter"}, {"action": "validate_exists", "selector": "#search"}] '
+    "Acciones disponibles: open_url (value=URL), find_and_type (selector=CSS, value=texto), click (selector=CSS), "
+    "hover (selector=CSS), press_key (selector=CSS opcional, value=tecla), select_option (selector=CSS, value=texto), "
+    "scroll_to (selector=CSS), validate_text (selector=CSS, value=texto esperado), "
+    "validate_url (value=URL parcial), validate_exists (selector=CSS), wait (value=segundos), screenshot. "
+    "IMPORTANTE: Si el usuario quiere buscar algo, incluye los pasos: abrir URL, escribir en el buscador, presionar enter, y validar resultado. "
+    "Usa selectores CSS reales y conocidos para sitios web populares. "
+    "Mantén el plan en maximo 8 pasos pero asegurate de que sea COMPLETO y funcional."
+)
+
 
 def _safe_print(*args, **kwargs):
-    """Print seguro que nunca falla por encoding en Windows."""
     try:
         print(*args, **kwargs)
     except (UnicodeEncodeError, OSError):
@@ -19,51 +49,9 @@ def _safe_print(*args, **kwargs):
         except Exception:
             pass
 
-# Intentar importar Google Generative AI (Gemini)
-GEMINI_AVAILABLE = False
-_GENAI_NEW = False  # True si usamos google.genai (nueva API)
-try:
-    import google.genai as genai  # nueva API (sin FutureWarning)
-    GEMINI_AVAILABLE = True
-    _GENAI_NEW = True
-except ImportError:
-    try:
-        import warnings
-        warnings.filterwarnings("ignore", category=FutureWarning)
-        import google.generativeai as genai  # type: ignore  # fallback (deprecada)
-        GEMINI_AVAILABLE = True
-    except ImportError:
-        pass
-DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
-
-
-def _fallback_plan(prompt: str) -> list[dict]:
-    """
-    Genera un plan genérico básico si Gemini no está disponible o no hay API Key.
-    Extrae la URL del prompt y genera un paso para abrirla.
-    """
-    url_match = re.search(r'(https?://[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:/[^\s]*)?)', prompt)
-    extracted_url = url_match.group(0) if url_match else None
-
-    if extracted_url:
-        if not extracted_url.startswith("http"):
-            extracted_url = "https://" + extracted_url
-        return [
-            {"action": "open_url", "value": extracted_url},
-            {"action": "validate_text", "selector": "body", "value": ""}
-        ]
-
-    # Si no hay URL en el prompt y no se usa Gemini, se requiere configurar la API Key
-    return [
-        {"action": "open_url", "value": "data:text/html,%3Ch1%3ESe%20requiere%20API%20Key%20de%20Gemini%20o%20especificar%20una%20URL%20en%20el%20prompt%3C%2Fh1%3E"},
-        {"action": "validate_text", "selector": "h1", "value": "Esperando configuración"}
-    ]
-
 
 def _extract_json_steps(raw: str) -> list[dict]:
-    """
-    Extrae de forma robusta una lista JSON desde el texto crudo de Gemini.
-    """
+    """Extrae de forma robusta una lista JSON desde el texto crudo del LLM."""
     cleaned = re.sub(r"```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
     cleaned = cleaned.strip().strip("`").strip()
     try:
@@ -84,47 +72,89 @@ def _extract_json_steps(raw: str) -> list[dict]:
         except json.JSONDecodeError:
             pass
 
-    raise ValueError(f"No se pudo parsear JSON de la IA: {raw[:200]}")
+    raise ValueError(f"No se pudo parsear JSON de la IA: {raw[:300]}")
 
-def _plan_with_ai(prompt: str, api_key: str, model_name: str, base_url: str = None) -> list[dict]:
-    """Llama a un modelo de IA para generar un plan de prueba."""
-    import openai
-    
-    if not base_url and "gemini" in model_name.lower():
-        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-        
-    client = openai.OpenAI(api_key=api_key, base_url=base_url)
 
-    system_instruction = (
-        "Eres un experto en QA automatizado con Selenium. "
-        "Responde UNICAMENTE con un array JSON de objetos. "
-        'Ejemplo: [{"action": "open_url", "value": "url"}, {"action": "click", "selector": "css"}] '
-        "Acciones permitidas: open_url, find_and_type, click, hover, press_key, select_option, scroll_to, validate_text, validate_url, validate_exists, wait, screenshot, generate_email, wait_for_email. "
-        "Usa {{email}} para referenciar un correo generado previamente."
+def _fallback_plan(prompt: str) -> list[dict]:
+    """Plan genérico si OpenRouter no está disponible."""
+    url_match = re.search(r'(https?://[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:/[^\s]*)?)', prompt)
+    extracted_url = url_match.group(0) if url_match else None
+
+    if extracted_url:
+        if not extracted_url.startswith("http"):
+            extracted_url = "https://" + extracted_url
+        return [
+            {"action": "open_url", "value": extracted_url},
+            {"action": "validate_text", "selector": "body", "value": ""}
+        ]
+
+    return [
+        {"action": "open_url", "value": "data:text/html,%3Ch1%3EIA%20no%20disponible%3C%2Fh1%3E"},
+        {"action": "validate_text", "selector": "h1", "value": ""}
+    ]
+
+
+def _call_model(model: str, prompt: str) -> str:
+    """Llama a un modelo específico en OpenRouter y retorna el texto crudo."""
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://qa-agent-web.firebaseapp.com",
+            "X-Title": "QA Agent No-Code",
+        },
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_INSTRUCTION},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 1024,
+        },
+        timeout=30,
     )
 
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.1
-    )
-    
-    raw = response.choices[0].message.content.strip()
-    return _extract_json_steps(raw)
+    if not response.ok:
+        raise ValueError(f"HTTP {response.status_code}: {response.text[:200]}")
+
+    data = response.json()
+    if "error" in data:
+        raise ValueError(data["error"].get("message", "Error desconocido"))
+
+    content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    if not content:
+        raise ValueError("Respuesta vacía del modelo")
+
+    _safe_print(f"[OpenRouter:{model}] Tokens usados: {data.get('usage', {})}")
+    return content
 
 
-def generate_test_plan(prompt: str, api_key: str = None, model_name: str = "gemini-2.0-flash", base_url: str = None) -> list[dict]:
-    """Punto de entrada principal para generar planes de prueba."""
-    if api_key is None:
-        api_key = os.getenv("GEMINI_API_KEY", "").strip()
-        
-    if api_key:
+def _plan_with_openrouter(prompt: str) -> list[dict]:
+    """Llama a OpenRouter con fallback automático entre modelos gratuitos."""
+    if not OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY no configurada en el servidor.")
+
+    models_to_try = [OPENROUTER_MODEL] + FALLBACK_MODELS
+    last_error = None
+
+    for model in models_to_try:
         try:
-            return _plan_with_ai(prompt, api_key, model_name, base_url)
+            raw = _call_model(model, prompt)
+            return _extract_json_steps(raw)
         except Exception as e:
-            raise Exception(f"Error en IA: {e}")
+            _safe_print(f"[planner] Modelo {model} falló: {e}")
+            last_error = e
+            continue
 
-    return _fallback_plan(prompt)
+    raise ValueError(f"Todos los modelos fallaron. Último error: {last_error}")
+
+
+def generate_test_plan(prompt: str, **kwargs) -> list[dict]:
+    """
+    Punto de entrada principal.
+    Usa OpenRouter (server-side) siempre. Los kwargs se ignoran por compatibilidad.
+    """
+    return _plan_with_openrouter(prompt)
+

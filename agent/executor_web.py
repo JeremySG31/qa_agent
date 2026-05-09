@@ -226,7 +226,7 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 
         # ── Acciones de navegación ──────────────────────────────────────────
         if action == "open_url":
-            if not value.startswith("http://") and not value.startswith("https://"):
+            if not value.startswith("http://") and not value.startswith("https://") and not value.startswith("data:"):
                 value = "https://" + value
             driver.get(value)
             result["status"] = "ok"
