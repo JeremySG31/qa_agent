@@ -53,5 +53,5 @@ Thumbs.db
 .DS_Store
 
 # Project-specific
-# (resultados JSON se mantienen - útiles para historial)
-# results/ <- Se versiona para ejemplos
+results/
+scratch/

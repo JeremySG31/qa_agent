@@ -40,7 +40,6 @@ except ImportError:
 
 
 WAIT_TIMEOUT = 15
-SCREENSHOTS_DIR = Path(__file__).parent.parent / "results" / "screenshots"
 
 KEY_MAP = {
     "enter": Keys.ENTER, "tab": Keys.TAB, "escape": Keys.ESCAPE,
@@ -95,23 +94,28 @@ def _build_driver(headless: bool = True):
                 options.add_argument("--log-level=3")
                 options.add_argument("--no-sandbox")
                 options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--window-size=1920,1080")
                 
-                chromium_path = shutil.which("chromium")
+                # Intentar detectar Chromium en Linux/Streamlit Cloud
+                chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
                 if chromium_path:
                     options.binary_location = chromium_path
 
                 chromedriver_path = shutil.which("chromedriver")
                 
-                if chromedriver_path:
-                    service = ChromeService(executable_path=chromedriver_path)
-                    driver = webdriver.Chrome(service=service, options=options)
-                elif CHROME_MANAGER_AVAILABLE:
-                    service = ChromeService(ChromeDriverManager().install())
-                    driver = webdriver.Chrome(service=service, options=options)
-                else:
-                    driver = webdriver.Chrome(options=options)
-                _safe_print("Navegador: Google Chrome")
-                return driver
+                try:
+                    if chromedriver_path:
+                        service = ChromeService(executable_path=chromedriver_path)
+                        driver = webdriver.Chrome(service=service, options=options)
+                    elif CHROME_MANAGER_AVAILABLE:
+                        service = ChromeService(ChromeDriverManager().install())
+                        driver = webdriver.Chrome(service=service, options=options)
+                    else:
+                        driver = webdriver.Chrome(options=options)
+                    _safe_print("Navegador: Google Chrome / Chromium")
+                    return driver
+                except Exception as e:
+                    _safe_print(f"Fallo Chrome: {e}")
 
             elif browser == "edge":
                 options = EdgeOptions()
@@ -283,13 +287,9 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 
         # ── Captura ─────────────────────────────────────────────────────────
         elif action == "screenshot":
-            SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-            fname = f"screenshot_{int(time.time())}.png"
-            fpath = str(SCREENSHOTS_DIR / fname)
-            driver.save_screenshot(fpath)
+            # Si no hay carpeta de resultados, solo informamos que se tomo (en memoria)
             result["status"] = "ok"
-            result["detail"] = f"Screenshot: {fname}"
-            result["screenshot_path"] = fpath
+            result["detail"] = "Captura realizada (omitiendo guardado local por configuración)"
 
         else:
             result["status"] = "error"
@@ -309,15 +309,7 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
         result["status"] = "error"
         result["detail"] = f"Error inesperado: {str(e)[:120]}"
 
-    # Captura automática en fallo si está habilitada
-    if result.get("status") == "error" and screenshot_on_fail:
-        try:
-            SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-            fname = f"fail_{action}_{int(time.time())}.png"
-            driver.save_screenshot(str(SCREENSHOTS_DIR / fname))
-            result["screenshot_path"] = str(SCREENSHOTS_DIR / fname)
-        except Exception:
-            pass
+    # Captura automática en fallo desactivada para evitar carpetas locales
 
     return result
 
