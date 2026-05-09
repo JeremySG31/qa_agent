@@ -85,6 +85,24 @@ def load_all_results(user_id: str = "default") -> list[dict]:
                         except:
                             pass
                 results.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+                # Si es invitado, aplicar rolling window de 24 horas
+                if "invitado_" in user_id:
+                    from datetime import datetime, timezone, timedelta
+                    tz_local = timezone(timedelta(hours=-5))
+                    dt_now = datetime.now(tz_local)
+                    filtered = []
+                    for r in results:
+                        try:
+                            # Asegurarnos de usar tz_local si el timestamp no tiene offset
+                            r_ts = datetime.fromisoformat(r.get("created_at", r.get("timestamp", "")))
+                            if r_ts.tzinfo is None:
+                                r_ts = r_ts.replace(tzinfo=tz_local)
+                            if dt_now - r_ts <= timedelta(hours=24):
+                                filtered.append(r)
+                        except Exception:
+                            filtered.append(r)
+                    return filtered
+
                 return results
         except Exception as e:
             print(f"❌ Error leyendo Firestore REST: {e}")

@@ -727,7 +727,7 @@ st.markdown("""
 user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local")
 
 if "invitado_" in user_email:
-    st.warning("🕵️ Estás en **Modo Invitado**. Los resultados solo se guardan de forma temporal (máx 10 tests) y se perderán. Para guardar en la nube y tener un historial ilimitado, por favor inicia sesión.")
+    st.warning("🕵️ Estás en **Modo Invitado**. Los resultados solo se guardan de forma temporal y se auto-borran después de 24h (máx 10 tests diarios). Para guardar en la nube y tener un historial ilimitado, por favor inicia sesión.")
 
 # ── Métricas ───────────────────────────────────────────────────────────────────
 results = load_all_results(user_id=user_email)
@@ -736,7 +736,7 @@ passed  = sum(1 for r in results if r.get("status") == "PASS")
 failed  = total - passed
 rate    = f"{int(passed/total*100)}%" if total > 0 else "–"
 
-total_label = "Tests (Máx 10)" if "invitado_" in user_email else "Total Tests"
+total_label = "Tests (últimas 24h)" if "invitado_" in user_email else "Total Tests"
 c1, c2, c3, c4 = st.columns(4)
 for col, val, label, color in [
     (c1, f"{total}/10" if "invitado_" in user_email else total, total_label, "#e2e8f0"),
@@ -1002,7 +1002,7 @@ with tab_builder:
     if run_custom:
         st.session_state.pop("last_result", None)
         if "invitado_" in st.session_state.get("user_email", "") and len(load_all_results(st.session_state.get("user_email", ""))) >= 10:
-            st.error("🛑 **Límite Alcanzado:** Has llegado al límite de 10 pruebas gratuitas como invitado. ¡Por favor regístrate para continuar usando QA Agent sin límites!")
+            st.error("🛑 **Límite Diario Alcanzado:** Has llegado al límite de 10 pruebas gratuitas en las últimas 24 horas. ¡Espera un poco o regístrate para continuar usando QA Agent sin límites!")
             st.stop()
         if not custom_steps:
             st.warning("Anade al menos un paso primero.")
