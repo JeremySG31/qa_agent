@@ -1867,7 +1867,7 @@ st.markdown(
 
     "<p style='text-align:center;color:#334155;font-size:.75rem;font-family:JetBrains Mono,monospace'>"
 
-    "QA Agent No-Code · Selenium + Gemini · Python · Streamlit"
+    "QA Agent No-Code · Selenium + IA · Python · Streamlit"
 
     "</p>",
 
