@@ -87,6 +87,8 @@ def load_all_results(user_id: str = "default") -> list[dict]:
                             pass
                 results.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
                 return results
+        except Exception as e:
+            print(f"❌ Error leyendo Firestore REST: {e}")
     return []
 
 
@@ -108,4 +110,6 @@ def clear_results(user_id: str = "default") -> int:
                     if d_res.ok:
                         count += 1
                 return count
+        except Exception as e:
+            print(f"❌ Error limpiando Firestore REST: {e}")
     return 0
