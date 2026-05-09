@@ -1011,8 +1011,10 @@ with tab_builder:
             from agent import executor_web
             importlib.reload(executor_web)
             from agent.reporter import save_result as _save
-            
-            default_name = f"Test del {datetime.now().strftime('%d/%m a las %H:%M')}"
+            from datetime import timezone, timedelta
+            tz_local = timezone(timedelta(hours=-5))
+            dt_now = datetime.now(tz_local)
+            default_name = f"Test del {dt_now.strftime('%d/%m a las %H:%M')}"
             name = b_test_name.strip() or default_name
             result_holder = {}
             

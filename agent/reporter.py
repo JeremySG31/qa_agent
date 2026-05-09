@@ -33,8 +33,11 @@ def _make_json_safe(obj):
 
 
 def save_result(result: dict, user_id: str = "default") -> str:
-    result["timestamp"] = datetime.now().isoformat()
-    result["created_at"] = datetime.now().isoformat()
+    from datetime import datetime, timezone, timedelta
+    tz_local = timezone(timedelta(hours=-5))
+    dt_now = datetime.now(tz_local)
+    result["timestamp"] = dt_now.isoformat()
+    result["created_at"] = dt_now.isoformat()
     safe_result = _make_json_safe(result)
 
     # Quitamos la restricción de invitado para que sus tests se guarden temporalmente 
