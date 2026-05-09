@@ -1165,6 +1165,7 @@ user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local
 
 
 
+if "invitado_" in user_email:
     st.warning("🕵️ Estás en **Modo Invitado**. Los resultados son temporales (máx 10 tests/24h) y las ejecuciones tienen un **límite de 7 pasos**. Inicia sesión para historial ilimitado y pruebas complejas.")
 
 
