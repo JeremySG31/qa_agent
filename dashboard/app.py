@@ -593,7 +593,7 @@ with st.sidebar:
             "OpenAI": ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "o1-mini", "o3-mini", "Otro (Manual)"],
             "Groq": ["llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma2-9b-it", "Otro (Manual)"],
             "DeepSeek": ["deepseek-chat", "deepseek-reasoner", "Otro (Manual)"],
-            "Custom OpenAI": ["Otro (Manual)"]
+            "Custom": ["Otro (Manual)"]
         }
         
         available_models = provider_models.get(provider, ["Otro (Manual)"])
@@ -944,7 +944,23 @@ with tab_builder:
             st.rerun()
 
     # Ejecucion con streaming
+    if st.session_state.get("last_result"):
+        lr = st.session_state.last_result
+        st.markdown(f"### Última ejecución: {lr['name']}")
+        ok = lr['status'] == 'PASS'
+        if ok:
+            st.success("✅ Completado con éxito")
+        else:
+            st.error("❌ Falló el test")
+            
+        with st.expander("Ver detalle de los pasos", expanded=not ok):
+            for idx, s in enumerate(lr['steps'], 1):
+                s_ok = s.get("status") == "ok"
+                icon = "✅" if s_ok else "❌"
+                st.write(f"**Paso {idx}:** {icon} [{s.get('action')}] - {s.get('detail', 'OK')}")
+
     if run_custom:
+        st.session_state.pop("last_result", None)
         if "invitado_" in st.session_state.get("user_email", "") and len(load_all_results(st.session_state.get("user_email", ""))) >= 10:
             st.error("🛑 **Límite Alcanzado:** Has llegado al límite de 10 pruebas gratuitas como invitado. ¡Por favor regístrate para continuar usando QA Agent sin límites!")
             st.stop()
@@ -1006,14 +1022,29 @@ with tab_builder:
                     live_status.update(label="FAIL - " + err, state="error", expanded=True)
 
             if result_holder:
-                umail = st.session_state.get("user_email","invitado@qa-agent.local")
+                umail = st.session_state.get("user_email", "invitado@qa-agent.local")
+                
+                # Limpiar Base64 antes de guardar para no exceder límite de 1MB de Firestore
+                clean_steps = []
+                for s in result_holder.get("steps", []):
+                    clean_s = s.copy()
+                    if "screenshot" in clean_s:
+                        del clean_s["screenshot"]
+                    clean_steps.append(clean_s)
+
                 _save({
                     "test_name": name,
                     "status":    result_holder.get("status","FAIL"),
-                    "steps":     result_holder.get("steps",[]),
+                    "steps":     clean_steps,
                     "error":     result_holder.get("error",""),
                 }, user_id=umail)
-
+                
+                st.session_state.last_result = {
+                    "name": name,
+                    "status": result_holder.get("status", "FAIL"),
+                    "steps": clean_steps
+                }
+                st.rerun()
 # ────────────────────────────────────────────────────────────────────────────
 # TAB 3 · HISTORIAL DE RESULTADOS
 # ────────────────────────────────────────────────────────────────────────────
