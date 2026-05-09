@@ -236,12 +236,6 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
         elif action in ("click", "find_and_type", "select_option"):
             element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
             
-            # Resaltar elemento si está activado
-            if highlight:
-                driver.execute_script("arguments[0].style.border='3px solid red'", element)
-                time.sleep(0.3)
-                driver.execute_script("arguments[0].style.border=''", element)
-            
             if action == "click":
                 element.click()
                 result["detail"] = f"Hizo clic en '{selector}'"
@@ -260,10 +254,6 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 
         elif action == "hover":
             element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-            if highlight:
-                driver.execute_script("arguments[0].style.border='3px solid red'", element)
-                time.sleep(0.3)
-                driver.execute_script("arguments[0].style.border=''", element)
             ActionChains(driver).move_to_element(element).perform()
             time.sleep(0.3)
             result["status"] = "ok"
@@ -398,7 +388,7 @@ def run_test(
         test_context = {}
         for i, step in enumerate(steps, 1):
             _safe_print(f"   Paso {i}/{len(steps)}: {step.get('action')} ...")
-            result = _execute_step(driver, step, wait, test_context, highlight=highlight, screenshot_on_fail=screenshot_on_fail)
+            result = _execute_step(driver, step, wait, test_context, screenshot_on_fail=screenshot_on_fail)
             executed_steps.append(result)
             if result["status"] == "error":
                 overall_status = "FAIL"
@@ -462,7 +452,7 @@ def run_test_streaming(
         for i, step in enumerate(steps, 1):
             yield {"type": "step_start", "index": i, "total": len(steps), "step": step}
 
-            result = _execute_step(driver, step, wait, test_context, highlight=highlight, screenshot_on_fail=screenshot_on_fail)
+            result = _execute_step(driver, step, wait, test_context, screenshot_on_fail=screenshot_on_fail)
             executed_steps.append(result)
 
             if result["status"] == "error":
