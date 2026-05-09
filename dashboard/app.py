@@ -704,16 +704,11 @@ if not st.session_state.user_logged_in:
     with col_login:
 
         st.markdown("""
-
-        <div style="text-align: center; margin-bottom: 2rem;">
-
-            <div class="login-logo" style="font-size: 3.5rem;">QA Agent</div>
-
-            <div class="login-subtitle">Acceso a la plataforma No-Code</div>
-
-        </div>
-
-        """, unsafe_allow_html=True)
+<div style="text-align: center; margin-bottom: 2rem;">
+    <div class="login-logo" style="font-size: 3.5rem;">QA Agent</div>
+    <div class="login-subtitle">Acceso a la plataforma No-Code</div>
+</div>
+""", unsafe_allow_html=True)
 
         
 
