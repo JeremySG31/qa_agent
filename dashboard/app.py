@@ -17,6 +17,10 @@ from agent.reporter import load_all_results, clear_results, save_result
 from agent.planner  import generate_test_plan
 from agent.crypto   import encrypt_data, decrypt_data
 
+@st.cache_data(ttl=300)
+def get_cached_results(user_id):
+    return load_all_results(user_id)
+
 # ── Cargar .env ────────────────────────────────────────────────────────────────
 try:
     from dotenv import load_dotenv
@@ -739,7 +743,7 @@ if "invitado_" in user_email:
     st.warning("🕵️ Estás en **Modo Invitado**. Los resultados solo se guardan de forma temporal y se auto-borran después de 24h (máx 10 tests diarios). Para guardar en la nube y tener un historial ilimitado, por favor inicia sesión.")
 
 # ── Métricas ───────────────────────────────────────────────────────────────────
-results = load_all_results(user_id=user_email)
+results = get_cached_results(user_id=user_email)
 total   = len(results)
 passed  = sum(1 for r in results if r.get("status") == "PASS")
 failed  = total - passed
@@ -1010,7 +1014,7 @@ with tab_builder:
 
     if run_custom:
         st.session_state.pop("last_result", None)
-        if "invitado_" in st.session_state.get("user_email", "") and len(load_all_results(st.session_state.get("user_email", ""))) >= 10:
+        if "invitado_" in st.session_state.get("user_email", "") and len(get_cached_results(st.session_state.get("user_email", ""))) >= 10:
             st.error("🛑 **Límite Diario Alcanzado:** Has llegado al límite de 10 pruebas gratuitas en las últimas 24 horas. ¡Espera un poco o regístrate para continuar usando QA Agent sin límites!")
             st.stop()
         if not custom_steps:
@@ -1092,6 +1096,9 @@ with tab_builder:
                     "error":     result_holder.get("error",""),
                 }, user_id=umail)
                 
+                # Insertar cache clear
+                get_cached_results.clear()
+                
                 st.session_state.last_result = {
                     "name": name,
                     "status": result_holder.get("status", "FAIL"),
@@ -1105,7 +1112,7 @@ with tab_results:
     st.markdown('<div class="section-title">📊 Historial de resultados</div>', unsafe_allow_html=True)
 
     user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local")
-    results = load_all_results(user_id=user_email)
+    results = get_cached_results(user_id=user_email)
     total = len(results)  # Calcular total ANTES de usarlo
 
     if not results:
