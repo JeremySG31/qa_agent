@@ -787,13 +787,12 @@ with tab_run:
         test_name = st.text_input("Nombre del test (opcional)", placeholder="Mi Test")
 
     with col_right:
-        st.markdown("**Opciones de ejecucion**")
-        b_incognito = st.checkbox("Modo Incógnito", value=False)
-        b_highlight = st.checkbox("Resaltar elementos", value=True)
-        b_timeout   = st.select_slider("Timeout (seg)", options=[5, 10, 15, 20, 30], value=15)
-        b_delay     = st.select_slider("Delay (seg)", options=[0.0, 0.5, 1.0, 2.0], value=0.5)
+        st.info("🤖 **¿Qué hace esta herramienta?**\nNuestro robot leerá tu instrucción, abrirá el sitio web y realizará todas las acciones automáticamente paso a paso.")
+        st.markdown("**Ajustes (Opcional)**")
+        step_timeout = st.select_slider("Tiempo de espera para cargar (seg)", options=[5, 10, 15, 20, 30], value=15, help="Aumenta esto si la página que vas a probar es muy lenta.")
+        step_delay   = st.select_slider("Pausa entre clics (seg)", options=[0.0, 0.5, 1.0, 2.0], value=0.5, help="Si es muy rápido, aumentalo para ver con claridad lo que hace el robot.")
         st.markdown("")
-        run_btn = st.button("Generar y Ejecutar Test", type="primary", use_container_width=True)
+        run_btn = st.button("🚀 Iniciar Prueba Automática", type="primary", use_container_width=True)
 
     st.markdown("---")
 
@@ -839,8 +838,7 @@ with tab_run:
 
                 with st.status("Ejecutando: " + final_name, expanded=True) as live_status:
                     for event in executor_web.run_test_streaming(
-                        final_name, steps,
-                        incognito=incognito, highlight=highlight, timeout=step_timeout,
+                        final_name, steps, timeout=step_timeout,
                         step_delay=step_delay, screenshot_on_fail=False,
                     ):
                         et = event.get("type")
@@ -1014,15 +1012,10 @@ with tab_builder:
             st.text_area("IA desactivada", placeholder="Activa tu API Key de IA en el panel lateral.", height=60, disabled=True, key="ai_step_disabled")
 
         st.markdown("---")
-        b_test_name = st.text_input("Nombre del test", placeholder="Mi Test Personalizado", key="b_name")
-        col_b_opt1, col_b_opt2 = st.columns(2)
-        with col_b_opt1:
-            b_incognito = st.checkbox("Incógnito", value=False, key="b_incognito")
-        with col_b_opt2:
-            b_highlight = st.checkbox("Resaltar", value=True, key="b_highlight")
-        st.markdown("**Ajustes de ejecucion**")
-        b_timeout  = st.select_slider("Timeout (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
-        b_delay    = st.select_slider("Pausa entre pasos", options=[0.0,0.5,1.0,2.0], value=0.5, key="b_delay")
+        b_test_name = st.text_input("Nombre de la prueba", placeholder="Ej: Comprar un producto", key="b_name")
+        st.markdown("**Ajustes de velocidad**")
+        b_timeout  = st.select_slider("Tiempo límite de carga (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
+        b_delay    = st.select_slider("Pausa entre cada paso (seg)", options=[0.0,0.5,1.0,2.0], value=0.5, key="b_delay")
 
         cr1, cr2 = st.columns(2)
         with cr1:
@@ -1111,8 +1104,7 @@ with tab_builder:
 
             with st.status("Ejecutando: " + name, expanded=True) as live_status:
                 for event in executor_web.run_test_streaming(
-                    name, custom_steps,
-                    incognito=b_incognito, highlight=b_highlight, timeout=b_timeout,
+                    name, custom_steps, timeout=b_timeout,
                     step_delay=b_delay, screenshot_on_fail=False,
                 ):
                     et = event.get("type")
