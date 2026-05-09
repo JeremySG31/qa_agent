@@ -85,6 +85,7 @@ def _build_driver(headless: bool = True):
         if b not in browsers_to_try:
             browsers_to_try.append(b)
 
+    errors = []
     for browser in browsers_to_try:
         try:
             if browser == "chrome":
@@ -116,6 +117,7 @@ def _build_driver(headless: bool = True):
                     return driver
                 except Exception as e:
                     _safe_print(f"Fallo Chrome: {e}")
+                    errors.append(f"Chrome: {e}")
 
             elif browser == "edge":
                 options = EdgeOptions()
@@ -130,8 +132,9 @@ def _build_driver(headless: bool = True):
                 return driver
         except Exception as e:
             _safe_print(f"No se pudo iniciar {browser}: {e}")
+            errors.append(f"{browser}: {e}")
 
-    raise Exception("No se pudo iniciar ningun navegador compatible (Chrome/Edge).")
+    raise Exception(f"No se pudo iniciar navegador. Errores: {' | '.join(errors)}")
 
 
 def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: bool = False) -> dict:
