@@ -1609,7 +1609,7 @@ with tab_builder:
 
             st.stop()
 
-        if not custom_steps:
+        if not st.session_state.custom_steps:
 
             st.warning("Anade al menos un paso primero.")
 
@@ -1639,22 +1639,14 @@ with tab_builder:
 
             user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
 
-            if "invitado_" in user_email_check and len(custom_steps) > 7:
-
+            if "invitado_" in user_email_check and len(st.session_state.custom_steps) > 7:
                 st.error("🛑 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
-
                 st.stop()
 
-
-
             with st.status("Ejecutando: " + name, expanded=True) as live_status:
-
                 for event in executor_web.run_test_streaming(
-
-                    name, custom_steps, timeout=b_timeout,
-
+                    name, st.session_state.custom_steps, timeout=b_timeout,
                     step_delay=b_delay, screenshot_on_fail=False,
-
                 ):
 
                     et = event.get("type")
