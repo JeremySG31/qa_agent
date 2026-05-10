@@ -65,27 +65,21 @@ st.set_page_config(
 
 
 
-# ── CSS NUCLEAR (Anti-flash y Estilos) ────────────────────────────────────────
+# ── Verificación de Dominio (Google Search Console) ─────────────────────────────
+
+st.markdown('<meta name="google-site-verification" content="1TyKKbQRLHJ9LvfxZnKzvgQUzSuz5EH_J4g5vjc3O-I" />', unsafe_allow_html=True)
+
+
+
+# ── CSS ────────────────────────────────────────────────────────────────────────
 
 st.markdown("""
+
 <style>
+
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap');
 
-/* Ocultar el contenedor de la app hasta que esté hidratado (1.2s delay) */
-[data-testid="stAppViewContainer"] {
-    animation: qa-nuclear-fadein 0.1s ease 1.2s both !important;
-    background: #0d0f14 !important;
-}
 
-@keyframes qa-nuclear-fadein {
-    from { opacity: 0; visibility: hidden; filter: blur(10px); }
-    to   { opacity: 1; visibility: visible; filter: blur(0); }
-}
-
-/* Supresión agresiva de cualquier alerta/error del sistema de Streamlit */
-[data-testid="stNotification"], .stException, .stAlert, div[class*="st-ae"], div[class*="st-af"], div[class*="st-ag"] {
-    display: none !important;
-}
 
 html, body, [data-testid="stAppViewContainer"] { 
     font-family:'Syne',sans-serif; 
@@ -93,41 +87,78 @@ html, body, [data-testid="stAppViewContainer"] {
     color:#e2e8f0 !important; 
 }
 
+
+
 .qa-header {
+
   background:linear-gradient(135deg,#0f172a,#1e293b);
+
   border:1px solid #22d3ee33; border-radius:14px;
+
   padding:28px 36px; margin-bottom:24px; position:relative; overflow:hidden;
+
 }
+
 .qa-header::before {
+
   content:''; position:absolute; top:0; left:0; right:0; height:3px;
+
   background:linear-gradient(90deg,#22d3ee,#818cf8,#f472b6);
+
 }
+
 .qa-header h1 { font-size:2rem; font-weight:800; color:#22d3ee; margin:0 0 4px; }
+
 .qa-header p  { color:#94a3b8; margin:0; font-size:.95rem; }
 
+
+
 .metric-box {
+
   background: linear-gradient(145deg, #1e293b, #0a0c10);
+
   border: 1px solid #38bdf840;
+
   border-top: 1px solid #38bdf880;
+
   border-radius: 16px;
+
   padding: 24px 10px;
+
   text-align: center;
+
   box-shadow: 0 10px 30px -5px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
   position: relative;
+
   overflow: visible;
+
 }
+
 .metric-box::before {
+
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100%;
+
   background: radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 60%);
+
   pointer-events: none;
+
   border-radius: 16px;
+
 }
+
 .metric-box:hover {
+
   transform: translateY(-5px);
+
   box-shadow: 0 20px 40px -5px rgba(56, 189, 248, 0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+
   border-color: #38bdf8;
+
 }
+
 .metric-value { 
   font-family: 'Syne', sans-serif; 
   font-size: 2.2rem; 
@@ -138,54 +169,104 @@ html, body, [data-testid="stAppViewContainer"] {
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0px 4px 8px rgba(56,189,248,0.3));
 }
+
 .metric-label { font-size:.85rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-top:10px; font-weight:700; }
 
+
+
 .result-card {
+
   background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+
   border: 1px solid #1e293b;
+
   border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
+
   transition: all .25s ease;
+
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+
 }
+
 .result-card:hover { border-color:#334155; transform:translateY(-2px); box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); }
+
 .result-card.pass  { border-left:4px solid #10b981; }
+
 .result-card.fail  { border-left:4px solid #ef4444; }
+
 .result-title { font-family:'JetBrains Mono',monospace; font-size:.9rem; font-weight:600; color:#e2e8f0; margin-bottom:6px; }
+
 .result-meta  { font-size:.75rem; color:#64748b; font-family:'JetBrains Mono',monospace; }
 
+
+
 .badge-pass { display:inline-block; background:#064e3b; color:#10b981; border:1px solid #10b981; border-radius:6px; padding:2px 10px; font-size:.75rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
+
 .badge-fail { display:inline-block; background:#450a0a; color:#ef4444; border:1px solid #ef4444; border-radius:6px; padding:2px 10px; font-size:.75rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
 
+
+
 .step-item {
+
   display:flex; align-items:flex-start; gap:10px;
+
   padding:8px 12px; border-radius:6px; margin-bottom:6px;
+
   background:#0f172a; border:1px solid #1e293b;
+
   font-family:'JetBrains Mono',monospace; font-size:.78rem;
+
 }
+
 .step-ok  { border-left:3px solid #10b981; }
+
 .step-err { border-left:3px solid #ef4444; }
+
 .step-icon { font-size:1rem; flex-shrink:0; }
+
 .step-text { color:#cbd5e1; }
+
 .step-action { color:#22d3ee; font-weight:600; margin-right:6px; }
 
+
+
 .plan-preview {
+
   background:#0f172a; border:1px solid #22d3ee33;
+
   border-radius:10px; padding:16px; margin:12px 0;
+
 }
+
 .plan-step {
+
   display:flex; gap:10px; align-items:flex-start;
+
   padding:6px 0; border-bottom:1px solid #1e293b;
+
   font-family:'JetBrains Mono',monospace; font-size:.8rem; color:#94a3b8;
+
 }
+
 .plan-step:last-child { border-bottom:none; }
+
 .plan-num  { color:#818cf8; font-weight:700; min-width:24px; }
+
 .plan-act  { color:#22d3ee; font-weight:600; min-width:130px; }
 
+
+
 .section-title {
+
   font-size:1.15rem; font-weight:700; color:#e2e8f0;
+
   margin:20px 0 12px; padding-bottom:8px;
+
   border-bottom:1px solid #1e293b;
+
 }
+
+
 
 /* Sidebar Styling */
 [data-testid="stSidebar"] { 
@@ -245,53 +326,108 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 
 .stTextInput [data-baseweb="input"], .stTextArea [data-baseweb="textarea"] {
+
   background-color: #111827 !important;
+
   border: 1px solid #334155 !important;
+
   border-radius: 8px !important;
+
 }
 
 .stTextInput input, .stTextArea textarea {
+
   color: #e2e8f0 !important;
+
   font-family: 'JetBrains Mono', monospace !important;
+
   background: transparent !important;
+
 }
 
 /* Ocultar el ojo nativo de contraseñas del navegador (Edge) para evitar duplicados con Streamlit */
+
 input::-ms-reveal, input::-ms-clear {
+
   display: none;
+
 }
 
 .stButton>button { border-radius:8px !important; font-family:'Syne',sans-serif !important; font-weight:700 !important; }
+
 .stSelectbox>div>div { background:#111827 !important; border:1px solid #334155 !important; }
+
 hr { border-color:#1e293b !important; }
+
 .stExpander { border-color:#1e293b !important; }
+
 .stTabs [data-baseweb="tab-list"] { background:#111827; border-radius:10px; padding:4px; gap:4px; }
+
 .stTabs [data-baseweb="tab"] { border-radius:7px; color:#64748b; }
+
 .stTabs [aria-selected="true"] { background:#1e293b; color:#22d3ee; }
+
 .error-box { background:#1a0a0a; border:1px solid #7f1d1d; border-radius:8px; padding:12px 16px; font-family:'JetBrains Mono',monospace; font-size:.8rem; color:#fca5a5; margin-top:8px; }
 
+
+
 /* Login Page CSS */
+
 .login-container {
+
   display: flex; flex-direction: column; align-items: center; justify-content: center;
+
   height: 80vh; text-align: center;
+
 }
 
 .login-box {
+
   background: linear-gradient(145deg, #1e293b, #0a0c10);
+
   border: 1px solid #38bdf840; border-top: 1px solid #38bdf880;
+
   border-radius: 20px; padding: 40px 50px;
+
   box-shadow: 0 10px 40px -10px rgba(56, 189, 248, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+
   max-width: 450px; width: 100%;
+
 }
 
 .login-logo {
+
   font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800;
+
   background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
+
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+
   filter: drop-shadow(0px 4px 10px rgba(56,189,248,0.3)); margin-bottom: 10px;
+
 }
 
 .login-subtitle { color: #94a3b8; font-size: 1rem; margin-bottom: 30px; }
+
+.google-btn {
+
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+
+  background: #ffffff; color: #1e293b !important; text-decoration: none;
+
+  font-weight: 700; font-size: 1.05rem; padding: 12px 24px; border-radius: 10px;
+
+  transition: all 0.3s ease; border: none; cursor: pointer; width: 100%;
+
+}
+
+.google-btn:hover {
+
+  transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,255,255,0.2);
+
+}
+
+.google-icon { width: 24px; height: 24px; }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
@@ -309,12 +445,30 @@ hr { border-color:#1e293b !important; }
   /* Sortable list adjustments */
   .sortable-item { font-size: 0.75rem !important; padding: 10px 12px !important; }
   
-
   /* Streamlit columns spacing */
   div[data-testid="column"] { margin-bottom: 1rem !important; }
 }
+
+/* ── Anti-flash: ocultar errores internos de hidratación de Streamlit ── */
+/* El error "Missing Submit Button" es un bug de hidratación React.       */
+.stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty { 
+    display: none !important; 
+}
+
+/* Fade-in del contenido del login para ocultar cualquier flash inicial */
+[data-testid="stMain"] .block-container {
+  animation: qa-fadein 0.3s ease 0.5s both;
+}
+@keyframes qa-fadein {
+  from { opacity: 0; filter: blur(5px); }
+  to   { opacity: 1; filter: blur(0); }
+}
 </style>
+
 """, unsafe_allow_html=True)
+
+
+
 
 
 # ── Session state ──────────────────────────────────────────────────────────────
@@ -637,8 +791,37 @@ if not st.session_state.user_logged_in:
                 st.error(_login_err)
 
 
+            with st.expander("¿Olvidaste tu contraseña?"):
+
+                with st.form("reset_password_form"):
+
+                    reset_email = st.text_input("Ingresa tu correo para recuperar", key="reset_email")
+
+                    submit_reset = st.form_submit_button("Enviar enlace de recuperación", use_container_width=True)
+
                 
 
+                if submit_reset:
+
+                    if reset_email:
+
+                        with st.spinner("Enviando correo..."):
+
+                            reset_res = firebase_reset_password(reset_email)
+
+                            if "error" not in reset_res:
+
+                                st.success("¡Enlace enviado! Revisa tu bandeja de entrada o spam.")
+
+                            else:
+
+                                st.error(firebase_error_message(reset_res.get("error", {}).get("message", "")))
+
+                    else:
+
+                        st.warning("Ingresa tu correo electrónico primero.")
+
+                
 
         with tab_register:
 
@@ -736,24 +919,6 @@ if not st.session_state.user_logged_in:
             _reg_err = st.session_state.pop("_reg_error", None)
             if _reg_err:
                 st.error(_reg_err)
-
-        # ── Olvidaste tu contraseña (Fuera de las pestañas para evitar errores de contexto) ──
-        st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
-        with st.expander("¿Olvidaste tu contraseña?"):
-            with st.form("reset_password_form"):
-                reset_email = st.text_input("Ingresa tu correo para recuperar", key="reset_email")
-                submit_reset = st.form_submit_button("Enviar enlace de recuperación", use_container_width=True)
-            
-            if submit_reset:
-                if reset_email:
-                    with st.spinner("Enviando correo..."):
-                        reset_res = firebase_reset_password(reset_email)
-                        if "error" not in reset_res:
-                            st.success("¡Enlace enviado! Revisa tu bandeja de entrada o spam.")
-                        else:
-                            st.error(firebase_error_message(reset_res.get("error", {}).get("message", "")))
-                else:
-                    st.warning("Ingresa tu correo electrónico primero.")
 
                 
 
@@ -898,37 +1063,6 @@ def confirm_clear_history():
 
             st.rerun()
 
-
-
-
-@st.dialog("⚠️ ¿Eliminar historial?")
-def confirm_clear_history():
-    st.warning("Esta acción eliminará permanentemente todos tus resultados de la base de datos. No se puede deshacer.")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Eliminar", type="primary", use_container_width=True):
-            user_email = st.session_state.get("user_email", "")
-            if user_email:
-                clear_results(user_email)
-                st.success("Historial borrado")
-                st.rerun()
-    with c2:
-        if st.button("Cancelar", use_container_width=True):
-            st.rerun()
-
-def show_profile():
-    st.markdown("### Datos de la cuenta")
-    user_email = st.session_state.get("user_email", "Usuario de Google")
-    st.markdown(f"""
-<div style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b; margin-bottom:15px;">
-    <div style="color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-bottom:5px;">Correo electrónico</div>
-    <div style="color:#e2e8f0; font-weight:bold; font-size:1.1rem;">{user_email}</div>
-</div>
-<div style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b; margin-bottom:20px;">
-    <div style="color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-bottom:5px;">Tipo de Plan</div>
-    <div style="color:#10b981; font-weight:bold; font-size:1.1rem;">⭐ Premium (Gratuito)</div>
-</div>
-""", unsafe_allow_html=True)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
