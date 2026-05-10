@@ -765,16 +765,15 @@ if not st.session_state.user_logged_in:
                             else:
 
                                 st.session_state["_login_error"] = firebase_error_message(res.get("error", {}).get("message", "Error desconocido"))
-                                st.rerun()
 
                     else:
 
                         st.session_state["_login_error"] = "Completa los campos de correo y contraseña."
-                        st.rerun()
 
             # Mostrar error de login fuera del form (persistido en session state)
-            if st.session_state.get("_login_error"):
-                st.error(st.session_state.pop("_login_error"))
+            _login_err = st.session_state.pop("_login_error", None)
+            if _login_err:
+                st.error(_login_err)
 
 
             with st.expander("¿Olvidaste tu contraseña?"):
