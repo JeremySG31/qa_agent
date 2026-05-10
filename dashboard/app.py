@@ -59,7 +59,7 @@ st.set_page_config(
 
     layout="wide",
 
-    initial_sidebar_state="auto",
+    initial_sidebar_state="collapsed",
 
 )
 
@@ -566,10 +566,11 @@ def firebase_error_message(raw_error):
         "TOO_MANY_ATTEMPTS_TRY_LATER": "Demasiados intentos. Intenta mas tarde.",
 
         "USER_DISABLED": "Esta cuenta ha sido deshabilitada.",
+        "INVALID_EMAIL": "El correo electrónico no es válido.",
 
     }
 
-    return error_map.get(raw_error, f"Error de autenticacion: {raw_error}")
+    return error_map.get(raw_error, f"Error: {raw_error}")
 
 
 
