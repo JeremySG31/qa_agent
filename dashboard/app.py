@@ -1027,14 +1027,10 @@ def render_steps(steps):
         detail = step.get("detail", "") or f"{step.get('selector','')} → {step.get('value','')}"
 
         st.markdown(f"""
-
-        <div class="step-item {css}">
-
-          <span class="step-icon">{icon}</span>
-
-          <span class="step-text"><span class="step-action">[{action}]</span>{detail}</span>
-
-        </div>""", unsafe_allow_html=True)
+<div class="step-item {css}">
+  <span class="step-icon">{icon}</span>
+  <span class="step-text"><span class="step-action">[{action}]</span>{detail}</span>
+</div>""", unsafe_allow_html=True)
 
 
 
@@ -1067,24 +1063,15 @@ def render_result_card(result, idx):
 
 
     st.markdown(f"""
-
-    <div class="result-card {css_cls}">
-
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-
-        <div>
-
-          <div class="result-title">#{idx:02d} — {name}</div>
-
-          <div class="result-meta">🕐 {ts_fmt} &nbsp;|&nbsp; {len(steps)} pasos</div>
-
-        </div>
-
-        <div>{badge}</div>
-
-      </div>
-
-    </div>""", unsafe_allow_html=True)
+<div class="result-card {css_cls}">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div class="result-title">#{idx:02d} — {name}</div>
+      <div class="result-meta">🕐 {ts_fmt} &nbsp;|&nbsp; {len(steps)} pasos</div>
+    </div>
+    <div>{badge}</div>
+  </div>
+</div>""", unsafe_allow_html=True)
 
 
 
@@ -1271,11 +1258,29 @@ results = get_cached_results(user_id=user_email)
 
 total   = len(results)
 
-passed  = sum(1 for r in results if r.get("status") == "PASS")
+passed_tests = sum(1 for r in results if r.get("status") == "PASS")
 
-failed  = total - passed
+failed_tests = total - passed_tests
 
-rate    = f"{int(passed/total*100)}%" if total > 0 else "–"
+
+
+# Calcular tasa de éxito basada en pasos individuales para ser más preciso
+
+total_steps = 0
+
+passed_steps = 0
+
+for r in results:
+
+    steps = r.get("steps", [])
+
+    total_steps += len(steps)
+
+    passed_steps += sum(1 for s in steps if s.get("status") == "ok")
+
+
+
+rate = f"{int(passed_steps/total_steps*100)}%" if total_steps > 0 else "–"
 
 
 
@@ -1287,11 +1292,11 @@ for col, val, label, color in [
 
     (c1, f"{total}/10" if "invitado_" in user_email else total, total_label, "#e2e8f0"),
 
-    (c2, passed, "Pasados",     "#10b981"),
+    (c2, passed_tests, "Tests OK",     "#10b981"),
 
-    (c3, failed, "Fallados",    "#ef4444"),
+    (c3, failed_tests, "Tests Fail",    "#ef4444"),
 
-    (c4, rate,   "Tasa de Exito",  "#818cf8"),
+    (c4, rate,   "Tasa de Pasos",  "#818cf8"),
 
 ]:
 
@@ -1386,6 +1391,7 @@ with tab_builder:
                         
                     st.session_state.custom_steps = new_steps
                     st.session_state.ai_generations_count += 1
+                    st.session_state["_scroll_to_steps"] = True
                     st.success(f"¡Pasos generados! (Uso: {st.session_state.ai_generations_count}/{max_generations})")
                     st.rerun()
 
@@ -1547,7 +1553,16 @@ with tab_builder:
         st.markdown("---")
         
     with col_b2:
+        st.markdown('<div id="steps-section"></div>', unsafe_allow_html=True)
         st.markdown("**Pasos del test**")
+        
+        if st.session_state.get("_scroll_to_steps"):
+            st.session_state.pop("_scroll_to_steps")
+            components.html("""
+                <script>
+                window.parent.document.getElementById('steps-section').scrollIntoView({behavior: 'smooth'});
+                </script>
+            """, height=0)
         
         @st.fragment
         def render_sortable_steps():
@@ -1626,7 +1641,16 @@ with tab_builder:
     with col_c1:
 
         b_test_name = st.text_input("Nombre de la prueba (Opcional)", placeholder="Ej: Comprar un producto", key="b_name")
-        b_visible = st.toggle("Ver navegador", value=False, help="Muestra la ventana del navegador durante el test (solo PC)")
+        
+        is_cloud = platform.system() == "Linux"
+        b_visible = st.toggle(
+            "Ver navegador", 
+            value=False, 
+            disabled=is_cloud,
+            help="Muestra la ventana del navegador durante el test (solo disponible localmente)"
+        )
+        if is_cloud:
+            st.caption("ℹ️ El navegador visible solo funciona en ejecución local.")
 
     with col_c2:
 
