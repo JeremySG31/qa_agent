@@ -793,9 +793,15 @@ if not st.session_state.user_logged_in:
 
             with st.expander("¿Olvidaste tu contraseña?"):
 
-                reset_email = st.text_input("Ingresa tu correo para recuperar", value=l_email, key="reset_email")
+                with st.form("reset_password_form"):
 
-                if st.button("Enviar enlace de recuperación", use_container_width=True):
+                    reset_email = st.text_input("Ingresa tu correo para recuperar", key="reset_email")
+
+                    submit_reset = st.form_submit_button("Enviar enlace de recuperación", use_container_width=True)
+
+                
+
+                if submit_reset:
 
                     if reset_email:
 
