@@ -60,8 +60,12 @@ st.set_page_config(
     layout="wide",
 
     initial_sidebar_state="collapsed",
-
 )
+
+# Forzar colapso en móvil al inicio de sesión
+if "sidebar_init_mobile" not in st.session_state:
+    st.session_state["sidebar_init_mobile"] = True
+    st.session_state["_close_sidebar_mobile"] = True
 
 
 
@@ -609,7 +613,7 @@ if not st.session_state.user_logged_in:
 
                 r_pass = st.text_input("Contraseña", type="password", key="r_pass")
 
-                r_pass2 = st.text_input("Repetir contrase├▒a", type="password", key="r_pass2")
+                r_pass2 = st.text_input("Repetir contraseña", type="password", key="r_pass2")
 
                 submitted_reg = st.form_submit_button("Crear cuenta", use_container_width=True)
 
@@ -637,7 +641,7 @@ if not st.session_state.user_logged_in:
 
                         if word in email_lower:
 
-                            return False, f"El correo contiene t├®rminos no permitidos o reservados."
+                            return False, f"El correo contiene términos no permitidos o reservados."
 
                     return True, ""
 
@@ -685,7 +689,7 @@ if not st.session_state.user_logged_in:
 
                 elif r_pass != r_pass2:
 
-                    st.session_state["_reg_error"] = "Las contrase├▒as no coinciden."
+                    st.session_state["_reg_error"] = "Las contraseñas no coinciden."
                     st.rerun()
 
                 else:
@@ -815,7 +819,7 @@ def show_profile():
 
 def confirm_clear_history():
 
-    st.warning("Esta acci├│n eliminar├í permanentemente todos tus resultados de la base de datos. No se puede deshacer.")
+    st.warning("Esta acción eliminará permanentemente todos tus resultados de la base de datos. No se puede deshacer.")
 
     c1, c2 = st.columns(2)
 
@@ -851,13 +855,13 @@ def render_steps(steps):
 
         status = step.get("status", "ok")
 
-        icon   = "Ô£à" if status == "ok" else "ÔØî"
+        icon   = "✅" if status == "ok" else "❌"
 
         css    = "step-ok" if status == "ok" else "step-err"
 
         action = step.get("action", "")
 
-        detail = step.get("detail", "") or f"{step.get('selector','')} ÔåÆ {step.get('value','')}"
+        detail = step.get("detail", "") or f"{step.get('selector','')} → {step.get('value','')}"
 
         st.markdown(f"""
 <div class="step-item {css}">
@@ -895,12 +899,12 @@ def render_result_card(result, idx):
 
 
 
-    error_html = f'<div class="error-box">ÔÜá´©Å {error}</div>' if error else ""
+    error_html = f'<div class="error-box">⚠️ {error}</div>' if error else ""
     st.markdown(f"""
 <div class="result-card {css_cls}">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
-      <div class="result-title">#{idx:02d} ÔÇö {name}</div>
+      <div class="result-title">#{idx:02d} — {name}</div>
       <div class="result-meta">­ƒòÉ {ts_fmt} &nbsp;|&nbsp; {len(steps)} pasos</div>
     </div>
     <div>{badge}</div>
@@ -1028,7 +1032,7 @@ with st.sidebar:
     # Info IA (server-side, sin configuracion de usuario)
     st.markdown("""
     <div style='background:rgba(15, 23, 42, 0.6); border:1px solid #22d3ee33; border-radius:12px; padding:12px 16px; margin-bottom:12px; font-size:.82rem; backdrop-filter:blur(5px);'>
-        <span style='color:#22d3ee; font-weight:600; display:block; margin-bottom:4px;'>Ô£¿ IA Incluida</span>
+        <span style='color:#22d3ee; font-weight:600; display:block; margin-bottom:4px;'>✨ IA Incluida</span>
         <span style='color:#94a3b8;'>Generador de pasos activo para todos los usuarios.</span>
     </div>
     """, unsafe_allow_html=True)
@@ -1109,11 +1113,11 @@ for r in results:
 
 
 
-rate = f"{int(passed_steps/total_steps*100)}%" if total_steps > 0 else "ÔÇô"
+rate = f"{int(passed_steps/total_steps*100)}%" if total_steps > 0 else "—"
 
 
 
-total_label = "Tests (├║ltimas 24h)" if "invitado_" in user_email else "Total Tests"
+total_label = "Tests (últimas 24h)" if "invitado_" in user_email else "Total Tests"
 
 c1, c2, c3, c4 = st.columns(4)
 
@@ -1175,13 +1179,13 @@ tab_builder, tab_results = st.tabs([
 
 with tab_builder:
 
-    st.markdown('<div class="section-title">1. Generador con IA Ô£¿</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">1. Generador con IA ✨</div>', unsafe_allow_html=True)
 
     default_prompt = st.session_state.pop("sidebar_prompt", "")
 
     ai_full_prompt = st.text_area(
 
-        "Describe qu├® quieres probar en lenguaje natural",
+        "Describe qué quieres probar en lenguaje natural",
 
         value=default_prompt,
 
@@ -1192,15 +1196,15 @@ with tab_builder:
 
     st.markdown("""
     <div style="background:rgba(34,211,238,0.05); border:1px solid rgba(34,211,238,0.2); border-radius:8px; padding:10px 14px; margin-bottom:15px;">
-        <p style="margin:0; font-size:0.8rem; color:#22d3ee; font-weight:600;">­ƒÆí Tip para el ├®xito:</p>
-        <p style="margin:0; font-size:0.75rem; color:#94a3b8;">S├® espec├¡fico con los nombres de botones, incluye la URL y menciona si hay avisos de cookies.</p>
+        <p style="margin:0; font-size:0.8rem; color:#22d3ee; font-weight:600;">💡 Tip para el éxito:</p>
+        <p style="margin:0; font-size:0.75rem; color:#94a3b8;">Sé específico con los nombres de botones, incluye la URL y menciona si hay avisos de cookies.</p>
     </div>
     """, unsafe_allow_html=True)
 
     if "ai_generations_count" not in st.session_state:
         st.session_state.ai_generations_count = 0
 
-    if st.button("Ô£¿ Generar todos los pasos con IA", use_container_width=True):
+    if st.button("✨ Generar todos los pasos con IA", use_container_width=True):
         is_guest = "invitado_" in st.session_state.get("user_email", "")
         max_generations = 3 if is_guest else 10
         
@@ -1221,7 +1225,7 @@ with tab_builder:
                     st.session_state.custom_steps = new_steps
                     st.session_state.ai_generations_count += 1
                     st.session_state["_scroll_to_steps"] = True
-                    st.success(f"┬íPasos generados! (Uso: {st.session_state.ai_generations_count}/{max_generations})")
+                    st.success(f"¡Pasos generados! (Uso: {st.session_state.ai_generations_count}/{max_generations})")
                     st.rerun()
 
                 except Exception as e:
@@ -1230,7 +1234,7 @@ with tab_builder:
 
         else:
 
-            st.warning("Escribe una instrucci├│n primero.")
+            st.warning("Escribe una instrucción primero.")
 
 
 
@@ -1361,7 +1365,7 @@ with tab_builder:
             b_value = st.text_input("Prefijo opcional", placeholder="Aleatorio si queda vacio", key="bv_ge")
 
         elif b_action == "wait_for_email":
-            b_value = st.text_input("Correo a monitorear", placeholder="├Ültimo generado si vac├¡o", key="bv_we")
+            b_value = st.text_input("Correo a monitorear", placeholder="Último generado si vacío", key="bv_we")
 
         REQUIRES_SEL = {"find_and_type","click","hover","scroll_to","select_option","validate_text","validate_exists"}
         REQUIRES_VAL = {"open_url","find_and_type","select_option","validate_text","validate_url","wait"}
