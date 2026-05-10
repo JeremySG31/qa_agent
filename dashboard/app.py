@@ -449,10 +449,19 @@ hr { border-color:#1e293b !important; }
   div[data-testid="column"] { margin-bottom: 1rem !important; }
 }
 
-/* Hide Streamlit's 'Missing Submit Button' flash during form hydration */
-div[data-testid="stForm"] .stException,
-div[data-testid="stForm"] .stAlert {
-  display: none !important;
+/* ── Anti-flash: ocultar errores internos de hidratación de Streamlit ── */
+/* El error "Missing Submit Button" es un bug de hidratación React,      */
+/* nunca debe ser visible al usuario.                                     */
+.stException { display: none !important; }
+[data-testid="stNotification"] { display: none !important; }
+
+/* Fade-in del contenido del login para ocultar cualquier flash inicial */
+[data-testid="stMain"] .block-container {
+  animation: qa-fadein 0.25s ease 0.35s both;
+}
+@keyframes qa-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 </style>
 
