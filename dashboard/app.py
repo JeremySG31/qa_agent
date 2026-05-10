@@ -32,37 +32,53 @@ try:
     load_dotenv(ROOT / ".env")
 except ImportError:
     pass
-
 # --- ESTRATEGIA DE CIERRE DE SIDEBAR EN MÓVIL ---
-if "sidebar_closed_mobile" not in st.session_state:
-    st.session_state["sidebar_closed_mobile"] = False
+if "sidebar_init_mobile" not in st.session_state:
+    st.session_state["sidebar_init_mobile"] = True
 
 # Script inyectado al inicio para asegurar colapso en móvil
 components.html("""
     <script>
     (function() {
         if (window.innerWidth > 768) return;
+        
+        var attempts = 0;
+        var maxAttempts = 20; // 2 segundos total
+        
         function tryClose() {
+            attempts++;
             var doc = window.parent.document;
-            // Selectores para el botón de colapso de Streamlit
-            var btn = doc.querySelector('[data-testid="stSidebarCollapseButton"]') || 
-                      doc.querySelector('button[aria-label="Close sidebar"]') ||
-                      doc.querySelector('[data-testid="stSidebar"] button[kind="header"]');
             
-            if (btn && btn.offsetParent !== null) {
-                // Solo clic si está realmente visible
-                var style = window.getComputedStyle(btn);
-                if (style.display !== 'none' && style.visibility !== 'hidden') {
-                    btn.click();
-                    return true;
-                }
+            // Selector específico de la barra lateral de Streamlit
+            var sidebar = doc.querySelector('[data-testid="stSidebar"]');
+            if (!sidebar) {
+                if (attempts < maxAttempts) setTimeout(tryClose, 100);
+                return;
             }
-            return false;
+
+            // Verificamos si está expandida en móvil
+            var isExpanded = sidebar.getAttribute('aria-expanded') === 'true' || 
+                             window.getComputedStyle(sidebar).transform === 'none' ||
+                             sidebar.clientWidth > 0;
+
+            if (isExpanded) {
+                // Buscamos el botón de cierre (la flecha << o el fondo)
+                var closeBtn = doc.querySelector('[data-testid="stSidebarCollapseButton"]') || 
+                               doc.querySelector('button[aria-label="Close sidebar"]');
+                
+                if (closeBtn) {
+                    closeBtn.click();
+                    console.log("Sidebar cerrada automáticamente en móvil");
+                } else if (attempts < maxAttempts) {
+                    setTimeout(tryClose, 100);
+                }
+            } else if (attempts < maxAttempts) {
+                // Seguimos intentando por si se abre sola después (hidratación lenta)
+                setTimeout(tryClose, 100);
+            }
         }
-        // Intentos múltiples para asegurar la captura del elemento tras la hidratación
+        
         setTimeout(tryClose, 100);
-        setTimeout(tryClose, 500);
-        setTimeout(tryClose, 1500);
     })();
     </script>
 """, height=0)
