@@ -1063,6 +1063,7 @@ def render_result_card(result, idx):
 
 
 
+    error_html = f'<div class="error-box">⚠️ {error}</div>' if error else ""
     st.markdown(f"""
 <div class="result-card {css_cls}">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -1072,13 +1073,8 @@ def render_result_card(result, idx):
     </div>
     <div>{badge}</div>
   </div>
+  {error_html}
 </div>""", unsafe_allow_html=True)
-
-
-
-    if error:
-
-        st.markdown(f'<div class="error-box">⚠️ {error}</div>', unsafe_allow_html=True)
 
     if steps:
 
