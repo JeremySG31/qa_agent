@@ -13,6 +13,7 @@ from pathlib import Path
 from datetime import datetime
 from urllib.parse import quote
 import streamlit as st
+import streamlit.components.v1 as components
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
@@ -618,6 +619,19 @@ if st.session_state.pop("_needs_key_reload", False):
 
 if not st.session_state.user_logged_in:
 
+    # --- Persistencia de Correo (Cargar de localStorage) ---
+    components.html("""
+        <script>
+        const key = 'saved_qa_email';
+        const urlParams = new URLSearchParams(window.parent.location.search);
+        const savedEmail = localStorage.getItem(key);
+        if (savedEmail && !urlParams.has('saved_email')) {
+            urlParams.set('saved_email', savedEmail);
+            window.parent.location.href = window.parent.location.pathname + '?' + urlParams.toString();
+        }
+        </script>
+    """, height=0)
+
     st.markdown("<br><br>", unsafe_allow_html=True)
 
     _, col_login, _ = st.columns([1, 1.2, 1])
@@ -686,10 +700,12 @@ if not st.session_state.user_logged_in:
                                 if remember:
 
                                     st.query_params["saved_email"] = l_email
+                                    st.session_state["_email_to_save"] = l_email
 
                                 elif "saved_email" in st.query_params:
 
                                     del st.query_params["saved_email"]
+                                    st.session_state["_email_to_remove"] = True
 
                                 st.rerun()
 
@@ -849,6 +865,23 @@ if not st.session_state.user_logged_in:
 
     
 
+# --- Persistencia de Correo (Guardar en localStorage) ---
+if st.session_state.get("_email_to_save"):
+    email_to_save = st.session_state.pop("_email_to_save")
+    components.html(f"""
+        <script>
+        localStorage.setItem('saved_qa_email', '{email_to_save}');
+        </script>
+    """, height=0)
+
+if st.session_state.get("_email_to_remove"):
+    st.session_state.pop("_email_to_remove")
+    components.html("""
+        <script>
+        localStorage.removeItem('saved_qa_email');
+        </script>
+    """, height=0)
+
 # ── Perfil de Usuario (Modal) ──────────────────────────────────────────────────
 
 @st.dialog("👤 Mi Perfil")
@@ -862,24 +895,15 @@ def show_profile():
     
 
     st.markdown(f"""
-
-    <div style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b; margin-bottom:15px;">
-
-        <div style="color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-bottom:5px;">Correo electrónico</div>
-
-        <div style="color:#e2e8f0; font-weight:bold; font-size:1.1rem;">{user_email}</div>
-
-    </div>
-
-    <div style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b; margin-bottom:20px;">
-
-        <div style="color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-bottom:5px;">Tipo de Plan</div>
-
-        <div style="color:#10b981; font-weight:bold; font-size:1.1rem;">⭐ Premium (Gratuito)</div>
-
-    </div>
-
-    """, unsafe_allow_html=True)
+<div style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b; margin-bottom:15px;">
+    <div style="color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-bottom:5px;">Correo electrónico</div>
+    <div style="color:#e2e8f0; font-weight:bold; font-size:1.1rem;">{user_email}</div>
+</div>
+<div style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #1e293b; margin-bottom:20px;">
+    <div style="color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-bottom:5px;">Tipo de Plan</div>
+    <div style="color:#10b981; font-weight:bold; font-size:1.1rem;">⭐ Premium (Gratuito)</div>
+</div>
+""", unsafe_allow_html=True)
 
 
 
