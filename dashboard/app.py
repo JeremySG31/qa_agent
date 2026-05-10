@@ -268,13 +268,17 @@ html, body, [data-testid="stAppViewContainer"] {
 
 
 /* Sidebar Styling */
-div[data-testid="stSidebar"] { 
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(13, 15, 20, 0.98) 100%) !important; 
+[data-testid="stSidebar"] { 
+    background: linear-gradient(180deg, #0f172a 0%, #0d0f14 100%) !important; 
     border-right: 1px solid #1e293b !important; 
-    backdrop-filter: blur(10px);
 }
 
-div[data-testid="stSidebar"] h2 {
+/* El contenido interno de la barra lateral también necesita el fondo para evitar parches grises */
+[data-testid="stSidebar"] > div {
+    background: transparent !important;
+}
+
+[data-testid="stSidebar"] h2 {
     color: #22d3ee !important;
     font-weight: 800 !important;
     letter-spacing: -0.5px;
@@ -282,14 +286,14 @@ div[data-testid="stSidebar"] h2 {
     font-family: 'Syne', sans-serif !important;
 }
 
-div[data-testid="stSidebar"] h3 {
+[data-testid="stSidebar"] h3 {
     color: #94a3b8 !important;
     font-size: 1rem !important;
     font-weight: 700 !important;
     margin-top: 15px !important;
 }
 
-div[data-testid="stSidebar"] .stButton button {
+[data-testid="stSidebar"] .stButton button {
     background: rgba(30, 41, 59, 0.5) !important;
     border: 1px solid #334155 !important;
     color: #cbd5e1 !important;
@@ -301,7 +305,7 @@ div[data-testid="stSidebar"] .stButton button {
     margin-bottom: 4px !important;
 }
 
-div[data-testid="stSidebar"] .stButton button:hover {
+[data-testid="stSidebar"] .stButton button:hover {
     border-color: #22d3ee !important;
     color: #ffffff !important;
     background: rgba(34, 211, 238, 0.1) !important;
@@ -309,7 +313,7 @@ div[data-testid="stSidebar"] .stButton button:hover {
     box-shadow: 0 4px 12px rgba(34, 211, 238, 0.15) !important;
 }
 
-div[data-testid="stSidebar"] hr {
+[data-testid="stSidebar"] hr {
     margin: 1.5rem 0 !important;
     border-color: #1e293b !important;
     opacity: 0.5 !important;
