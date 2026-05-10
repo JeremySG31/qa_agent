@@ -1,6 +1,6 @@
 """
 
-dashboard/app.py - Dashboard QA con interfaz completa sin código
+dashboard/app.py - Dashboard QA con interfaz completa sin c├│digo
 
 Ejecutar con: streamlit run dashboard/app.py
 
@@ -35,7 +35,7 @@ def get_cached_results(user_id):
 
 
 
-# ── Cargar .env ────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇ Cargar .env ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 try:
 
@@ -49,7 +49,7 @@ except ImportError:
 
 
 
-# ── Config página ──────────────────────────────────────────────────────────────
+# ÔöÇÔöÇ Config página ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 st.set_page_config(
 
@@ -65,21 +65,17 @@ st.set_page_config(
 
 
 
-# ── Verificación de Dominio (Google Search Console) ─────────────────────────────
+# --- Verificación de Dominio (Google Search Console) -------------------------
 
 st.markdown('<meta name="google-site-verification" content="1TyKKbQRLHJ9LvfxZnKzvgQUzSuz5EH_J4g5vjc3O-I" />', unsafe_allow_html=True)
 
 
 
-# ── CSS ────────────────────────────────────────────────────────────────────────
+# --- CSS ---------------------------------------------------------------------
 
 st.markdown("""
-
 <style>
-
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap');
-
-
 
 html, body, [data-testid="stAppViewContainer"] { 
     font-family:'Syne',sans-serif; 
@@ -87,78 +83,51 @@ html, body, [data-testid="stAppViewContainer"] {
     color:#e2e8f0 !important; 
 }
 
+/* --- ESTRATEGIA NUCLEAR ANTI-FLASH --- */
+/* Ocultamos el contenedor principal durante la hidratacion para evitar parpadeos */
+[data-testid="stAppViewContainer"] {
+    visibility: hidden;
+    animation: qa-nuclear-fadein 0.1s steps(1) 1.2s forwards;
+}
 
+@keyframes qa-nuclear-fadein {
+    to { visibility: visible; }
+}
+
+/* Ocultar errores internos de hidratacion de React/Streamlit */
+.stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty { 
+    display: none !important; 
+}
 
 .qa-header {
-
   background:linear-gradient(135deg,#0f172a,#1e293b);
-
   border:1px solid #22d3ee33; border-radius:14px;
-
   padding:28px 36px; margin-bottom:24px; position:relative; overflow:hidden;
-
 }
-
 .qa-header::before {
-
   content:''; position:absolute; top:0; left:0; right:0; height:3px;
-
   background:linear-gradient(90deg,#22d3ee,#818cf8,#f472b6);
-
 }
-
 .qa-header h1 { font-size:2rem; font-weight:800; color:#22d3ee; margin:0 0 4px; }
-
 .qa-header p  { color:#94a3b8; margin:0; font-size:.95rem; }
 
-
-
 .metric-box {
-
   background: linear-gradient(145deg, #1e293b, #0a0c10);
-
   border: 1px solid #38bdf840;
-
   border-top: 1px solid #38bdf880;
-
   border-radius: 16px;
-
   padding: 24px 10px;
-
   text-align: center;
-
   box-shadow: 0 10px 30px -5px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255,255,255,0.1);
-
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
   position: relative;
-
   overflow: visible;
-
 }
-
-.metric-box::before {
-
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100%;
-
-  background: radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 60%);
-
-  pointer-events: none;
-
-  border-radius: 16px;
-
-}
-
 .metric-box:hover {
-
   transform: translateY(-5px);
-
   box-shadow: 0 20px 40px -5px rgba(56, 189, 248, 0.3), inset 0 1px 0 rgba(255,255,255,0.2);
-
   border-color: #38bdf8;
-
 }
-
 .metric-value { 
   font-family: 'Syne', sans-serif; 
   font-size: 2.2rem; 
@@ -167,290 +136,28 @@ html, body, [data-testid="stAppViewContainer"] {
   background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0px 4px 8px rgba(56,189,248,0.3));
 }
-
 .metric-label { font-size:.85rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-top:10px; font-weight:700; }
 
-
-
 .result-card {
-
   background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
-
   border: 1px solid #1e293b;
-
   border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
-
-  transition: all .25s ease;
-
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-
 }
-
-.result-card:hover { border-color:#334155; transform:translateY(-2px); box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); }
-
 .result-card.pass  { border-left:4px solid #10b981; }
-
 .result-card.fail  { border-left:4px solid #ef4444; }
-
-.result-title { font-family:'JetBrains Mono',monospace; font-size:.9rem; font-weight:600; color:#e2e8f0; margin-bottom:6px; }
-
-.result-meta  { font-size:.75rem; color:#64748b; font-family:'JetBrains Mono',monospace; }
-
-
-
-.badge-pass { display:inline-block; background:#064e3b; color:#10b981; border:1px solid #10b981; border-radius:6px; padding:2px 10px; font-size:.75rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
-
-.badge-fail { display:inline-block; background:#450a0a; color:#ef4444; border:1px solid #ef4444; border-radius:6px; padding:2px 10px; font-size:.75rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
-
-
-
-.step-item {
-
-  display:flex; align-items:flex-start; gap:10px;
-
-  padding:8px 12px; border-radius:6px; margin-bottom:6px;
-
-  background:#0f172a; border:1px solid #1e293b;
-
-  font-family:'JetBrains Mono',monospace; font-size:.78rem;
-
-}
-
-.step-ok  { border-left:3px solid #10b981; }
-
-.step-err { border-left:3px solid #ef4444; }
-
-.step-icon { font-size:1rem; flex-shrink:0; }
-
-.step-text { color:#cbd5e1; }
-
-.step-action { color:#22d3ee; font-weight:600; margin-right:6px; }
-
-
-
-.plan-preview {
-
-  background:#0f172a; border:1px solid #22d3ee33;
-
-  border-radius:10px; padding:16px; margin:12px 0;
-
-}
-
-.plan-step {
-
-  display:flex; gap:10px; align-items:flex-start;
-
-  padding:6px 0; border-bottom:1px solid #1e293b;
-
-  font-family:'JetBrains Mono',monospace; font-size:.8rem; color:#94a3b8;
-
-}
-
-.plan-step:last-child { border-bottom:none; }
-
-.plan-num  { color:#818cf8; font-weight:700; min-width:24px; }
-
-.plan-act  { color:#22d3ee; font-weight:600; min-width:130px; }
-
-
-
-.section-title {
-
-  font-size:1.15rem; font-weight:700; color:#e2e8f0;
-
-  margin:20px 0 12px; padding-bottom:8px;
-
-  border-bottom:1px solid #1e293b;
-
-}
-
-
 
 /* Sidebar Styling */
 [data-testid="stSidebar"] { 
     background: linear-gradient(180deg, #0f172a 0%, #0d0f14 100%) !important; 
     border-right: 1px solid #1e293b !important; 
 }
-
-/* El contenido interno de la barra lateral también necesita el fondo para evitar parches grises */
-[data-testid="stSidebar"] > div {
-    background: transparent !important;
-}
-
 [data-testid="stSidebar"] h2 {
     color: #22d3ee !important;
     font-weight: 800 !important;
-    letter-spacing: -0.5px;
-    margin-bottom: 20px !important;
     font-family: 'Syne', sans-serif !important;
 }
 
-[data-testid="stSidebar"] h3 {
-    color: #94a3b8 !important;
-    font-size: 1rem !important;
-    font-weight: 700 !important;
-    margin-top: 15px !important;
-}
-
-[data-testid="stSidebar"] .stButton button {
-    background: rgba(30, 41, 59, 0.5) !important;
-    border: 1px solid #334155 !important;
-    color: #cbd5e1 !important;
-    font-size: 0.85rem !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    text-align: left !important;
-    padding: 10px 15px !important;
-    border-radius: 10px !important;
-    margin-bottom: 4px !important;
-}
-
-[data-testid="stSidebar"] .stButton button:hover {
-    border-color: #22d3ee !important;
-    color: #ffffff !important;
-    background: rgba(34, 211, 238, 0.1) !important;
-    transform: translateX(5px) !important;
-    box-shadow: 0 4px 12px rgba(34, 211, 238, 0.15) !important;
-}
-
-[data-testid="stSidebar"] hr {
-    margin: 1.5rem 0 !important;
-    border-color: #1e293b !important;
-    opacity: 0.5 !important;
-}
-
-/* Forzar modo oscuro en toda la app */
-.stApp {
-    background-color: #0d0f14 !important;
-}
-
-.stTextInput [data-baseweb="input"], .stTextArea [data-baseweb="textarea"] {
-
-  background-color: #111827 !important;
-
-  border: 1px solid #334155 !important;
-
-  border-radius: 8px !important;
-
-}
-
-.stTextInput input, .stTextArea textarea {
-
-  color: #e2e8f0 !important;
-
-  font-family: 'JetBrains Mono', monospace !important;
-
-  background: transparent !important;
-
-}
-
-/* Ocultar el ojo nativo de contraseñas del navegador (Edge) para evitar duplicados con Streamlit */
-
-input::-ms-reveal, input::-ms-clear {
-
-  display: none;
-
-}
-
-.stButton>button { border-radius:8px !important; font-family:'Syne',sans-serif !important; font-weight:700 !important; }
-
-.stSelectbox>div>div { background:#111827 !important; border:1px solid #334155 !important; }
-
-hr { border-color:#1e293b !important; }
-
-.stExpander { border-color:#1e293b !important; }
-
-.stTabs [data-baseweb="tab-list"] { background:#111827; border-radius:10px; padding:4px; gap:4px; }
-
-.stTabs [data-baseweb="tab"] { border-radius:7px; color:#64748b; }
-
-.stTabs [aria-selected="true"] { background:#1e293b; color:#22d3ee; }
-
-.error-box { background:#1a0a0a; border:1px solid #7f1d1d; border-radius:8px; padding:12px 16px; font-family:'JetBrains Mono',monospace; font-size:.8rem; color:#fca5a5; margin-top:8px; }
-
-
-
-/* Login Page CSS */
-
-.login-container {
-
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-
-  height: 80vh; text-align: center;
-
-}
-
-.login-box {
-
-  background: linear-gradient(145deg, #1e293b, #0a0c10);
-
-  border: 1px solid #38bdf840; border-top: 1px solid #38bdf880;
-
-  border-radius: 20px; padding: 40px 50px;
-
-  box-shadow: 0 10px 40px -10px rgba(56, 189, 248, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
-
-  max-width: 450px; width: 100%;
-
-}
-
-.login-logo {
-
-  font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800;
-
-  background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
-
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-
-  filter: drop-shadow(0px 4px 10px rgba(56,189,248,0.3)); margin-bottom: 10px;
-
-}
-
-.login-subtitle { color: #94a3b8; font-size: 1rem; margin-bottom: 30px; }
-
-.google-btn {
-
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-
-  background: #ffffff; color: #1e293b !important; text-decoration: none;
-
-  font-weight: 700; font-size: 1.05rem; padding: 12px 24px; border-radius: 10px;
-
-  transition: all 0.3s ease; border: none; cursor: pointer; width: 100%;
-
-}
-
-.google-btn:hover {
-
-  transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,255,255,0.2);
-
-}
-
-.google-icon { width: 24px; height: 24px; }
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .qa-header { padding: 18px 20px !important; margin-bottom: 16px !important; }
-  .qa-header h1 { font-size: 1.5rem !important; }
-  .qa-header p { font-size: 0.85rem !important; }
-  
-  .metric-box { padding: 16px 8px !important; margin-bottom: 10px !important; }
-  .metric-value { font-size: 1.8rem !important; }
-  .metric-label { font-size: 0.7rem !important; letter-spacing: 1px !important; }
-  
-  .login-box { padding: 24px 20px !important; width: 95% !important; max-width: 380px !important; margin: 0 auto !important; }
-  .login-logo { font-size: 2rem !important; }
-  
-  /* Sortable list adjustments */
-  .sortable-item { font-size: 0.75rem !important; padding: 10px 12px !important; }
-  
-  /* Streamlit columns spacing */
-  div[data-testid="column"] { margin-bottom: 1rem !important; }
-}
-
-/* ── Anti-flash: ocultar errores internos de hidratación de Streamlit ── */
-/* El error "Missing Submit Button" es un bug de hidratación React.       */
 .stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty { 
     display: none !important; 
 }
@@ -471,7 +178,7 @@ hr { border-color:#1e293b !important; }
 
 
 
-# ── Session state ──────────────────────────────────────────────────────────────
+# --- Session state ---
 
 if "plan_preview" not in st.session_state:
 
@@ -534,7 +241,7 @@ if _user_from_url and not st.session_state.get("user_logged_in"):
 
 
 
-# ── Configuración de Firebase ──────────────────────────────────────────────────
+# --- Configuración de Firebase ---
 
 # Se recomienda rotar esta clave en la consola de Firebase
 
@@ -581,7 +288,7 @@ def firebase_error_message(raw_error):
         "TOO_MANY_ATTEMPTS_TRY_LATER": "Demasiados intentos. Intenta mas tarde.",
 
         "USER_DISABLED": "Esta cuenta ha sido deshabilitada.",
-        "INVALID_EMAIL": "El correo electrónico no es válido.",
+        "INVALID_EMAIL": "El correo electrónico no es v├ílido.",
 
     }
 
@@ -679,7 +386,7 @@ def firebase_load_settings(email):
 
 
 
-# ── Manejo de Código OAuth (ELIMINADO) ─────────────────────────────────────────
+# ÔöÇÔöÇ Manejo de C├│digo OAuth (ELIMINADO) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 # Se elimina por restricciones de Streamlit Cloud e iframe.
 
@@ -691,11 +398,11 @@ if st.session_state.pop("_needs_key_reload", False):
 
 
 
-# ── Pantalla de Login ─────────────────────────────────────────────────────────
+# --- Pantalla de Login ---
 
 if not st.session_state.user_logged_in:
 
-    # Nota: la persistencia del correo se hace solo via query params (sin redirección JS para evitar flashes)
+    # Nota: la persistencia del correo se hace solo via query params (sin redirecci├│n JS para evitar flashes)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
@@ -783,7 +490,7 @@ if not st.session_state.user_logged_in:
 
                     else:
 
-                        st.session_state["_login_error"] = "Completa los campos de correo y contraseña."
+                        st.session_state["_login_error"] = "Completa los campos de correo y contrase├▒a."
 
             # Mostrar error de login fuera del form (persistido en session state)
             _login_err = st.session_state.pop("_login_error", None)
@@ -791,13 +498,13 @@ if not st.session_state.user_logged_in:
                 st.error(_login_err)
 
 
-            with st.expander("¿Olvidaste tu contraseña?"):
+            with st.expander("┬┐Olvidaste tu contrase├▒a?"):
 
                 with st.form("reset_password_form"):
 
                     reset_email = st.text_input("Ingresa tu correo para recuperar", key="reset_email")
 
-                    submit_reset = st.form_submit_button("Enviar enlace de recuperación", use_container_width=True)
+                    submit_reset = st.form_submit_button("Enviar enlace de recuperaci├│n", use_container_width=True)
 
                 
 
@@ -811,7 +518,7 @@ if not st.session_state.user_logged_in:
 
                             if "error" not in reset_res:
 
-                                st.success("¡Enlace enviado! Revisa tu bandeja de entrada o spam.")
+                                st.success("┬íEnlace enviado! Revisa tu bandeja de entrada o spam.")
 
                             else:
 
@@ -831,7 +538,7 @@ if not st.session_state.user_logged_in:
 
                 r_pass = st.text_input("Contraseña", type="password", key="r_pass")
 
-                r_pass2 = st.text_input("Repetir contraseña", type="password", key="r_pass2")
+                r_pass2 = st.text_input("Repetir contrase├▒a", type="password", key="r_pass2")
 
                 submitted_reg = st.form_submit_button("Crear cuenta", use_container_width=True)
 
@@ -859,7 +566,7 @@ if not st.session_state.user_logged_in:
 
                         if word in email_lower:
 
-                            return False, f"El correo contiene términos no permitidos o reservados."
+                            return False, f"El correo contiene t├®rminos no permitidos o reservados."
 
                     return True, ""
 
@@ -907,7 +614,7 @@ if not st.session_state.user_logged_in:
 
                 elif r_pass != r_pass2:
 
-                    st.session_state["_reg_error"] = "Las contraseñas no coinciden."
+                    st.session_state["_reg_error"] = "Las contrase├▒as no coinciden."
                     st.rerun()
 
                 else:
@@ -922,7 +629,7 @@ if not st.session_state.user_logged_in:
 
                 
 
-        # ── Botón de Invitado (Acceso Rápido) ──────────────────────────────────
+        # --- Verificación de Dominio ---
 
         st.markdown("<div style='margin-top:20px; margin-bottom:10px; border-top:1px solid #1e293b; padding-top:20px;'></div>", unsafe_allow_html=True)
 
@@ -967,7 +674,7 @@ if st.session_state.get("_needs_scroll_to_top"):
         </script>
     """, height=0)
 
-# --- Cerrar Sidebar en Móvil tras login ---
+# --- Cerrar Sidebar en M├│vil tras login ---
 if st.session_state.pop("_close_sidebar_mobile", False):
     components.html("""
         <script>
@@ -1008,9 +715,9 @@ if st.session_state.get("_email_to_remove"):
         </script>
     """, height=0)
 
-# ── Perfil de Usuario (Modal) ──────────────────────────────────────────────────
+# --- Perfil de Usuario ---
 
-@st.dialog("👤 Mi Perfil")
+@st.dialog("­ƒæñ Mi Perfil")
 
 def show_profile():
 
@@ -1033,17 +740,17 @@ def show_profile():
 
 
 
-@st.dialog("⚠️ ¿Eliminar historial?")
+@st.dialog("ÔÜá´©Å ┬┐Eliminar historial?")
 
 def confirm_clear_history():
 
-    st.warning("Esta acción eliminará permanentemente todos tus resultados de la base de datos. No se puede deshacer.")
+    st.warning("Esta acci├│n eliminar├í permanentemente todos tus resultados de la base de datos. No se puede deshacer.")
 
     c1, c2 = st.columns(2)
 
     with c1:
 
-        if st.button("Sí, eliminar todo", use_container_width=True, type="primary"):
+        if st.button("S├¡, eliminar todo", use_container_width=True, type="primary"):
 
             u_email = st.session_state.get("user_email", "invitado@qa-agent.local")
 
@@ -1065,7 +772,7 @@ def confirm_clear_history():
 
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇ Helpers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 def render_steps(steps):
 
@@ -1073,13 +780,13 @@ def render_steps(steps):
 
         status = step.get("status", "ok")
 
-        icon   = "✅" if status == "ok" else "❌"
+        icon   = "Ô£à" if status == "ok" else "ÔØî"
 
         css    = "step-ok" if status == "ok" else "step-err"
 
         action = step.get("action", "")
 
-        detail = step.get("detail", "") or f"{step.get('selector','')} → {step.get('value','')}"
+        detail = step.get("detail", "") or f"{step.get('selector','')} ÔåÆ {step.get('value','')}"
 
         st.markdown(f"""
 <div class="step-item {css}">
@@ -1117,13 +824,13 @@ def render_result_card(result, idx):
 
 
 
-    error_html = f'<div class="error-box">⚠️ {error}</div>' if error else ""
+    error_html = f'<div class="error-box">ÔÜá´©Å {error}</div>' if error else ""
     st.markdown(f"""
 <div class="result-card {css_cls}">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
-      <div class="result-title">#{idx:02d} — {name}</div>
-      <div class="result-meta">🕐 {ts_fmt} &nbsp;|&nbsp; {len(steps)} pasos</div>
+      <div class="result-title">#{idx:02d} ÔÇö {name}</div>
+      <div class="result-meta">­ƒòÉ {ts_fmt} &nbsp;|&nbsp; {len(steps)} pasos</div>
     </div>
     <div>{badge}</div>
   </div>
@@ -1132,7 +839,7 @@ def render_result_card(result, idx):
 
     if steps:
 
-        with st.expander(f"📋 Ver {len(steps)} pasos ejecutados"):
+        with st.expander(f"­ƒôï Ver {len(steps)} pasos ejecutados"):
 
             render_steps(steps)
 
@@ -1200,11 +907,11 @@ def run_test_subprocess(prompt, headless):
 
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 # SIDEBAR
-# ══════════════════════════════════════════════════════════════════════════════
+# ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 with st.sidebar:
     st.markdown("## QA Agent")
     st.markdown("---")
@@ -1250,7 +957,7 @@ with st.sidebar:
     # Info IA (server-side, sin configuracion de usuario)
     st.markdown("""
     <div style='background:rgba(15, 23, 42, 0.6); border:1px solid #22d3ee33; border-radius:12px; padding:12px 16px; margin-bottom:12px; font-size:.82rem; backdrop-filter:blur(5px);'>
-        <span style='color:#22d3ee; font-weight:600; display:block; margin-bottom:4px;'>✨ IA Incluida</span>
+        <span style='color:#22d3ee; font-weight:600; display:block; margin-bottom:4px;'>Ô£¿ IA Incluida</span>
         <span style='color:#94a3b8;'>Generador de pasos activo para todos los usuarios.</span>
     </div>
     """, unsafe_allow_html=True)
@@ -1278,7 +985,7 @@ with st.sidebar:
 
 # HEADER
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
 st.markdown("""
 
@@ -1299,11 +1006,11 @@ user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local
 
 
 if "invitado_" in user_email:
-    st.warning("🕵️ Estás en **Modo Invitado**. Los resultados son temporales (máx 10 tests/24h) y las ejecuciones tienen un **límite de 7 pasos**. Inicia sesión para historial ilimitado y pruebas complejas.")
+    st.warning("­ƒòÁ´©Å Est├ís en **Modo Invitado**. Los resultados son temporales (m├íx 10 tests/24h) y las ejecuciones tienen un **l├¡mite de 7 pasos**. Inicia sesión para historial ilimitado y pruebas complejas.")
 
 
 
-# ── Métricas ───────────────────────────────────────────────────────────────────
+# --- Muestrario de Resultados ---
 
 results = get_cached_results(user_id=user_email)
 
@@ -1315,7 +1022,7 @@ failed_tests = total - passed_tests
 
 
 
-# Calcular tasa de éxito basada en pasos individuales para ser más preciso
+# Calcular tasa de ├®xito basada en pasos individuales para ser más preciso
 
 total_steps = 0
 
@@ -1331,11 +1038,11 @@ for r in results:
 
 
 
-rate = f"{int(passed_steps/total_steps*100)}%" if total_steps > 0 else "–"
+rate = f"{int(passed_steps/total_steps*100)}%" if total_steps > 0 else "ÔÇô"
 
 
 
-total_label = "Tests (últimas 24h)" if "invitado_" in user_email else "Total Tests"
+total_label = "Tests (├║ltimas 24h)" if "invitado_" in user_email else "Total Tests"
 
 c1, c2, c3, c4 = st.columns(4)
 
@@ -1371,11 +1078,11 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
 # TABS PRINCIPALES
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
 tab_builder, tab_results = st.tabs([
 
@@ -1389,21 +1096,21 @@ tab_builder, tab_results = st.tabs([
 
 
 
-# ────────────────────────────────────────────────────────────────────────────
+# --- Historial de Resultados ---
 
 # TAB 2 - CONSTRUCTOR VISUAL
 
-# ────────────────────────────────────────────────────────────────────────────
+# --- Historial de Resultados ---
 
 with tab_builder:
 
-    st.markdown('<div class="section-title">1. Generador con IA ✨</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">1. Generador con IA Ô£¿</div>', unsafe_allow_html=True)
 
     default_prompt = st.session_state.pop("sidebar_prompt", "")
 
     ai_full_prompt = st.text_area(
 
-        "Describe qué quieres probar en lenguaje natural",
+        "Describe qu├® quieres probar en lenguaje natural",
 
         value=default_prompt,
 
@@ -1414,20 +1121,20 @@ with tab_builder:
 
     st.markdown("""
     <div style="background:rgba(34,211,238,0.05); border:1px solid rgba(34,211,238,0.2); border-radius:8px; padding:10px 14px; margin-bottom:15px;">
-        <p style="margin:0; font-size:0.8rem; color:#22d3ee; font-weight:600;">💡 Tip para el éxito:</p>
-        <p style="margin:0; font-size:0.75rem; color:#94a3b8;">Sé específico con los nombres de botones, incluye la URL y menciona si hay avisos de cookies.</p>
+        <p style="margin:0; font-size:0.8rem; color:#22d3ee; font-weight:600;">­ƒÆí Tip para el ├®xito:</p>
+        <p style="margin:0; font-size:0.75rem; color:#94a3b8;">S├® espec├¡fico con los nombres de botones, incluye la URL y menciona si hay avisos de cookies.</p>
     </div>
     """, unsafe_allow_html=True)
 
     if "ai_generations_count" not in st.session_state:
         st.session_state.ai_generations_count = 0
 
-    if st.button("✨ Generar todos los pasos con IA", use_container_width=True):
+    if st.button("Ô£¿ Generar todos los pasos con IA", use_container_width=True):
         is_guest = "invitado_" in st.session_state.get("user_email", "")
         max_generations = 3 if is_guest else 10
         
         if st.session_state.ai_generations_count >= max_generations:
-            st.error(f"🛑 **Límite Alcanzado:** Has alcanzado el límite de {max_generations} generaciones con IA para esta sesión. Intenta crear los pasos manualmente para no gastar los tokens.")
+            st.error(f"­ƒøæ **L├¡mite Alcanzado:** Has alcanzado el l├¡mite de {max_generations} generaciones con IA para esta sesión. Intenta crear los pasos manualmente para no gastar los tokens.")
         elif ai_full_prompt.strip():
 
             with st.spinner("Generando pasos con IA..."):
@@ -1436,14 +1143,14 @@ with tab_builder:
                     importlib.reload(agent.planner)
                     new_steps = agent.planner.generate_test_plan(ai_full_prompt)
                     
-                    # Asegurar IDs únicos para drag and drop
+                    # Asegurar IDs ├║nicos para drag and drop
                     for s in new_steps:
                         if "id" not in s: s["id"] = str(uuid.uuid4())[:8]
                         
                     st.session_state.custom_steps = new_steps
                     st.session_state.ai_generations_count += 1
                     st.session_state["_scroll_to_steps"] = True
-                    st.success(f"¡Pasos generados! (Uso: {st.session_state.ai_generations_count}/{max_generations})")
+                    st.success(f"┬íPasos generados! (Uso: {st.session_state.ai_generations_count}/{max_generations})")
                     st.rerun()
 
                 except Exception as e:
@@ -1452,7 +1159,7 @@ with tab_builder:
 
         else:
 
-            st.warning("Escribe una instrucción primero.")
+            st.warning("Escribe una instrucci├│n primero.")
 
 
 
@@ -1583,17 +1290,17 @@ with tab_builder:
             b_value = st.text_input("Prefijo opcional", placeholder="Aleatorio si queda vacio", key="bv_ge")
 
         elif b_action == "wait_for_email":
-            b_value = st.text_input("Correo a monitorear", placeholder="Último generado si vacío", key="bv_we")
+            b_value = st.text_input("Correo a monitorear", placeholder="├Ültimo generado si vac├¡o", key="bv_we")
 
         REQUIRES_SEL = {"find_and_type","click","hover","scroll_to","select_option","validate_text","validate_exists"}
         REQUIRES_VAL = {"open_url","find_and_type","select_option","validate_text","validate_url","wait"}
 
-        if st.button("Añadir paso", use_container_width=True):
+        if st.button("A├▒adir paso", use_container_width=True):
             err = None
             if b_action in REQUIRES_SEL and not b_selector and b_action != "scroll_to":
-                err = "Selector CSS requerido para esta acción."
+                err = "Selector CSS requerido para esta acci├│n."
             elif b_action in REQUIRES_VAL and not b_value and b_action not in ("scroll_to",):
-                err = "Valor requerido para esta acción."
+                err = "Valor requerido para esta acci├│n."
             
             if err: st.error(err)
             else:
@@ -1623,7 +1330,7 @@ with tab_builder:
                     '<div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;'
                     'padding:30px;text-align:center;color:#475569;">'
                     '<div style="font-size:2rem;margin-bottom:8px">+</div>'
-                    '<div>No hay pasos aún. Añade acciones o genéralas con IA.</div>'
+                    '<div>No hay pasos a├║n. A├▒ade acciones o gen├®ralas con IA.</div>'
                     '</div>',
                     unsafe_allow_html=True)
                 return
@@ -1634,7 +1341,7 @@ with tab_builder:
                 if "id" not in s: s["id"] = str(uuid.uuid4())[:8]
                 act, val, sel = s.get("action",""), s.get("value",""), s.get("selector","")
                 detail = val if val else sel
-                display_text = f"⠿ {i+1}. [{act.upper()}] {detail}"
+                display_text = f"Ôá┐ {i+1}. [{act.upper()}] {detail}"
                 key = f"{display_text}" + (" " * 50) + f"\u200b{s['id']}"
                 display_list.append(key)
                 display_to_step[key] = s
@@ -1650,8 +1357,8 @@ with tab_builder:
                 .sortable-item { font-size: 0.75rem !important; padding: 8px 10px !important; }
             }
             """
-            st.caption("🖱️ Arrastra para reordenar o a la Papelera para borrar.")
-            columns = [{"header": "📋 ORDEN DE EJECUCIÓN", "items": display_list}, {"header": "🗑️ PAPELERA", "items": []}]
+            st.caption("­ƒû▒´©Å Arrastra para reordenar o a la Papelera para borrar.")
+            columns = [{"header": "­ƒôï ORDEN DE EJECUCI├ôN", "items": display_list}, {"header": "­ƒùæ´©Å PAPELERA", "items": []}]
             results = sort_items(columns, direction="vertical", multi_containers=True, custom_style=custom_style)
             
             new_display_list = results[0].get("items", [])
@@ -1660,7 +1367,7 @@ with tab_builder:
             
             if len(new_steps) != len(custom_steps) or new_display_list != display_list:
                 st.session_state.custom_steps = new_steps
-                if trash_list: st.toast(f"🗑️ Eliminado(s) {len(trash_list)} paso(s)")
+                if trash_list: st.toast(f"­ƒùæ´©Å Eliminado(s) {len(trash_list)} paso(s)")
                 st.rerun(scope="fragment")
 
         render_sortable_steps()
@@ -1683,7 +1390,7 @@ with tab_builder:
 
 
 
-    # Controles de Ejecución Globales
+    # Controles de Ejecuci├│n Globales
 
     st.markdown("---")
 
@@ -1704,7 +1411,7 @@ with tab_builder:
 
     with col_c2:
 
-        b_timeout = st.select_slider("Tiempo límite (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
+        b_timeout = st.select_slider("Tiempo l├¡mite (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
 
         b_delay   = st.select_slider("Pausa (seg)", options=[0.0,0.5,1.0,2.0], value=0.5, key="b_delay")
 
@@ -1712,9 +1419,9 @@ with tab_builder:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        run_custom = st.button("🚀 Ejecutar Prueba", type="primary", use_container_width=True)
+        run_custom = st.button("­ƒÜÇ Ejecutar Prueba", type="primary", use_container_width=True)
         if "invitado_" in st.session_state.get("user_email", ""):
-            st.caption("⚠️ Máximo 7 pasos en modo invitado")
+            st.caption("ÔÜá´©Å M├íximo 7 pasos en modo invitado")
 
         
 
@@ -1736,17 +1443,17 @@ with tab_builder:
 
         lr = st.session_state.last_result
 
-        st.markdown(f"### Última ejecución: {lr['name']}")
+        st.markdown(f"### ├Ültima ejecución: {lr['name']}")
 
         ok = lr['status'] == 'PASS'
 
         if ok:
 
-            st.success("✅ Completado con éxito")
+            st.success("Ô£à Completado con ├®xito")
 
         else:
 
-            st.error("❌ Falló el test")
+            st.error("ÔØî Fall├│ el test")
 
             
 
@@ -1756,7 +1463,7 @@ with tab_builder:
 
                 s_ok = s.get("status") == "ok"
 
-                icon = "✅" if s_ok else "❌"
+                icon = "Ô£à" if s_ok else "ÔØî"
 
                 st.write(f"**Paso {idx}:** {icon} [{s.get('action')}] - {s.get('detail', 'OK')}")
 
@@ -1782,7 +1489,7 @@ with tab_builder:
 
         if "invitado_" in st.session_state.get("user_email", "") and len(get_cached_results(st.session_state.get("user_email", ""))) >= 10:
 
-            st.error("🛑 **Límite Diario Alcanzado:** Has llegado al límite de 10 pruebas gratuitas en las últimas 24 horas. ¡Espera un poco o regístrate para continuar usando QA Agent sin límites!")
+            st.error("­ƒøæ **L├¡mite Diario Alcanzado:** Has llegado al l├¡mite de 10 pruebas gratuitas en las ├║ltimas 24 horas. ┬íEspera un poco o reg├¡strate para continuar usando QA Agent sin l├¡mites!")
 
             st.stop()
 
@@ -1817,7 +1524,7 @@ with tab_builder:
             user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
 
             if "invitado_" in user_email_check and len(st.session_state.custom_steps) > 7:
-                st.error("🛑 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
+                st.error("­ƒøæ **L├¡mite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
                 st.stop()
 
             with st.status("Ejecutando: " + name, expanded=True) as live_status:
@@ -1908,7 +1615,7 @@ with tab_builder:
 
                 
 
-                # Limpiar Base64 antes de guardar para no exceder límite de 1MB de Firestore
+                # Limpiar Base64 antes de guardar para no exceder l├¡mite de 1MB de Firestore
 
                 clean_steps = []
 
@@ -1956,15 +1663,15 @@ with tab_builder:
 
                 st.rerun()
 
-# ────────────────────────────────────────────────────────────────────────────
+# --- Historial de Resultados ---
 
-# TAB 3 · HISTORIAL DE RESULTADOS
+# TAB 3 ┬À HISTORIAL DE RESULTADOS
 
-# ────────────────────────────────────────────────────────────────────────────
+# --- Historial de Resultados ---
 
 with tab_results:
 
-    st.markdown('<div class="section-title">📊 Historial de resultados</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">­ƒôè Historial de resultados</div>', unsafe_allow_html=True)
 
 
 
@@ -1978,7 +1685,7 @@ with tab_results:
 
     if not results:
 
-        st.info("🔍 No hay resultados aún. Ejecuta tu primer test en la pestaña **Ejecutar Test**.")
+        st.info("­ƒöì No hay resultados a├║n. Ejecuta tu primer test en la pestaña **Ejecutar Test**.")
 
     else:
 
@@ -1986,7 +1693,7 @@ with tab_results:
 
         with col_f1:
 
-            search = st.text_input("🔍 Buscar test", placeholder="Filtrar por nombre...", key="search")
+            search = st.text_input("­ƒöì Buscar test", placeholder="Filtrar por nombre...", key="search")
 
         with col_f2:
 
@@ -1994,7 +1701,7 @@ with tab_results:
 
         with col_f3:
 
-            sort_order = st.selectbox("Orden", ["Más reciente", "Más antiguo"], key="fsort")
+            sort_order = st.selectbox("Orden", ["M├ís reciente", "M├ís antiguo"], key="fsort")
 
 
 
@@ -2008,7 +1715,7 @@ with tab_results:
 
             filtered = [r for r in filtered if r.get("status") == filter_status]
 
-        if sort_order == "Más antiguo":
+        if sort_order == "M├ís antiguo":
 
             filtered = list(reversed(filtered))
 
@@ -2030,7 +1737,7 @@ with tab_results:
 
 
 
-# ── Footer ─────────────────────────────────────────────────────────────────────
+# ÔöÇÔöÇ Footer ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 st.markdown("---")
 
@@ -2038,7 +1745,7 @@ st.markdown(
 
     "<p style='text-align:center;color:#334155;font-size:.75rem;font-family:JetBrains Mono,monospace'>"
 
-    "QA Agent No-Code · Selenium + IA · Python · Streamlit"
+    "QA Agent No-Code ┬À Selenium + IA ┬À Python ┬À Streamlit"
 
     "</p>",
 
