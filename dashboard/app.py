@@ -1,13 +1,3 @@
-"""
-
-dashboard/app.py - Dashboard QA con interfaz completa sin c├│digo
-
-Ejecutar con: streamlit run dashboard/app.py
-
-"""
-
-
-
 import sys, os, json, subprocess, re, importlib, uuid
 from pathlib import Path
 from datetime import datetime
@@ -15,6 +5,14 @@ from urllib.parse import quote
 import streamlit as st
 import streamlit.components.v1 as components
 import platform
+
+# --- CONFIGURACION DE PAGINA (DEBE SER LO PRIMERO) ---
+st.set_page_config(
+    page_title="QA Agent No-Code",
+    page_icon="robot",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
@@ -25,42 +23,15 @@ from agent.planner  import generate_test_plan
 from agent.crypto   import encrypt_data, decrypt_data
 from streamlit_sortables import sort_items
 
-
-
 @st.cache_data(ttl=300)
-
 def get_cached_results(user_id):
-
     return load_all_results(user_id)
 
-
-
-# ÔöÇÔöÇ Cargar .env ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-
 try:
-
     from dotenv import load_dotenv
-
     load_dotenv(ROOT / ".env")
-
 except ImportError:
-
     pass
-
-
-
-# ÔöÇÔöÇ Config página ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-
-st.set_page_config(
-
-    page_title="QA Agent No-Code",
-
-    page_icon="robot",
-
-    layout="wide",
-
-    initial_sidebar_state="collapsed",
-)
 
 # --- ESTRATEGIA DE CIERRE DE SIDEBAR EN MÓVIL ---
 if "sidebar_closed_mobile" not in st.session_state:
@@ -76,12 +47,15 @@ components.html("""
             // Selectores para el botón de colapso de Streamlit
             var btn = doc.querySelector('[data-testid="stSidebarCollapseButton"]') || 
                       doc.querySelector('button[aria-label="Close sidebar"]') ||
-                      doc.querySelector('[data-testid="stSidebar"] button');
+                      doc.querySelector('[data-testid="stSidebar"] button[kind="header"]');
             
             if (btn && btn.offsetParent !== null) {
-                // Solo clic si está visible (lo que significa que está abierta)
-                btn.click();
-                return true;
+                // Solo clic si está realmente visible
+                var style = window.getComputedStyle(btn);
+                if (style.display !== 'none' && style.visibility !== 'hidden') {
+                    btn.click();
+                    return true;
+                }
             }
             return false;
         }
@@ -314,28 +288,22 @@ if "firebase_id_token" not in st.session_state:
 
 
 
+
 # Persistir usuario en query params para mantener sesión tras recarga
-
 try:
-
-    _params = st.query_params
-
-    _user_from_url = _params.get("user", "")
-
+    _user_from_url = st.query_params.get("user", "")
 except Exception:
-
     _user_from_url = ""
 
-
+# Evitar auto-login si acabamos de salir (flag especial)
+if st.session_state.get("_just_logged_out"):
+    _user_from_url = ""
+    if not st.session_state.get("user_logged_in"):
+        st.session_state.pop("_just_logged_out", None)
 
 if _user_from_url and not st.session_state.get("user_logged_in"):
-
     st.session_state.user_logged_in = True
-
     st.session_state.user_email = _user_from_url
-
-    # La Gemini API key se recarga en el bloque posterior (tras definir firebase_load_settings)
-
     st.session_state["_needs_key_reload"] = True
 
 
@@ -1001,30 +969,28 @@ with st.sidebar:
 
     if is_guest_mode:
         if st.button("Salir del Modo Invitado", use_container_width=True):
+            # Limpieza quirúrgica
             st.session_state.user_logged_in = False
             st.session_state.user_email = ""
             st.session_state.firebase_id_token = ""
-            st.session_state.ai_config = {}
             st.session_state.is_guest = False
             st.session_state.custom_steps = []
-            try:
-                saved = st.query_params.get("saved_email", "")
-                st.query_params.clear()
-                if saved: st.query_params["saved_email"] = saved
-            except Exception:
-                pass
+            st.session_state["_just_logged_out"] = True
+            st.query_params.clear()
             st.rerun()
     else:
         if st.button("Mi Perfil", use_container_width=True):
             show_profile()
         if st.button("Cerrar Sesion", use_container_width=True):
+            # Limpieza quirúrgica
             st.session_state.user_logged_in = False
             st.session_state.user_email = ""
             st.session_state.firebase_id_token = ""
-            st.session_state.ai_config = {}
             st.session_state.is_guest = False
             st.session_state.custom_steps = []
-            try:
+            st.session_state["_just_logged_out"] = True
+            st.query_params.clear()
+            st.rerun()
                 saved = st.query_params.get("saved_email", "")
                 st.query_params.clear()
                 if saved: st.query_params["saved_email"] = saved
@@ -1816,7 +1782,7 @@ with tab_results:
 
 
 
-# ÔöÇÔöÇ Footer ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+# --- Footer ---
 
 st.markdown("---")
 
