@@ -269,8 +269,9 @@ html, body, [data-testid="stAppViewContainer"] {
 
 /* Sidebar Styling */
 div[data-testid="stSidebar"] { 
-    background: #0a0c10 !important; 
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(13, 15, 20, 0.98) 100%) !important; 
     border-right: 1px solid #1e293b !important; 
+    backdrop-filter: blur(10px);
 }
 
 div[data-testid="stSidebar"] h2 {
@@ -289,9 +290,9 @@ div[data-testid="stSidebar"] h3 {
 }
 
 div[data-testid="stSidebar"] .stButton button {
-    background: #111827 !important;
-    border: 1px solid #1e293b !important;
-    color: #94a3b8 !important;
+    background: rgba(30, 41, 59, 0.5) !important;
+    border: 1px solid #334155 !important;
+    color: #cbd5e1 !important;
     font-size: 0.85rem !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     text-align: left !important;
@@ -302,10 +303,10 @@ div[data-testid="stSidebar"] .stButton button {
 
 div[data-testid="stSidebar"] .stButton button:hover {
     border-color: #22d3ee !important;
-    color: #22d3ee !important;
-    background: #0f172a !important;
+    color: #ffffff !important;
+    background: rgba(34, 211, 238, 0.1) !important;
     transform: translateX(5px) !important;
-    box-shadow: 0 4px 12px rgba(34, 211, 238, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(34, 211, 238, 0.15) !important;
 }
 
 div[data-testid="stSidebar"] hr {
@@ -1194,9 +1195,9 @@ with st.sidebar:
 
     # Info IA (server-side, sin configuracion de usuario)
     st.markdown("""
-    <div style='background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:.82rem;'>
-        <span style='color:#22d3ee;font-weight:600'>IA Incluida</span><br>
-        <span style='color:#64748b'>Generador de pasos activo para todos los usuarios.</span>
+    <div style='background:rgba(15, 23, 42, 0.6); border:1px solid #22d3ee33; border-radius:12px; padding:12px 16px; margin-bottom:12px; font-size:.82rem; backdrop-filter:blur(5px);'>
+        <span style='color:#22d3ee; font-weight:600; display:block; margin-bottom:4px;'>✨ IA Incluida</span>
+        <span style='color:#94a3b8;'>Generador de pasos activo para todos los usuarios.</span>
     </div>
     """, unsafe_allow_html=True)
 
