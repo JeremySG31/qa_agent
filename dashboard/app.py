@@ -448,6 +448,12 @@ hr { border-color:#1e293b !important; }
   /* Streamlit columns spacing */
   div[data-testid="column"] { margin-bottom: 1rem !important; }
 }
+
+/* Hide Streamlit's 'Missing Submit Button' flash during form hydration */
+div[data-testid="stForm"] .stException,
+div[data-testid="stForm"] .stAlert {
+  display: none !important;
+}
 </style>
 
 """, unsafe_allow_html=True)
