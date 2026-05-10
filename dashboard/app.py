@@ -1,4 +1,4 @@
-import sys, os, json, subprocess, re, importlib, uuid
+﻿import sys, os, json, subprocess, re, importlib, uuid
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import quote
@@ -969,7 +969,8 @@ with st.sidebar:
 
     if is_guest_mode:
         if st.button("Salir del Modo Invitado", use_container_width=True):
-            # Limpieza quirúrgica
+            # Limpieza quirúrgica pero preservando el correo guardado
+            saved_email = st.query_params.get("saved_email", "")
             st.session_state.user_logged_in = False
             st.session_state.user_email = ""
             st.session_state.firebase_id_token = ""
@@ -977,12 +978,15 @@ with st.sidebar:
             st.session_state.custom_steps = []
             st.session_state["_just_logged_out"] = True
             st.query_params.clear()
+            if saved_email:
+                st.query_params["saved_email"] = saved_email
             st.rerun()
     else:
         if st.button("Mi Perfil", use_container_width=True):
             show_profile()
         if st.button("Cerrar Sesion", use_container_width=True):
-            # Limpieza quirúrgica
+            # Limpieza quirúrgica pero preservando el correo guardado
+            saved_email = st.query_params.get("saved_email", "")
             st.session_state.user_logged_in = False
             st.session_state.user_email = ""
             st.session_state.firebase_id_token = ""
@@ -990,12 +994,8 @@ with st.sidebar:
             st.session_state.custom_steps = []
             st.session_state["_just_logged_out"] = True
             st.query_params.clear()
-            st.rerun()
-                saved = st.query_params.get("saved_email", "")
-                st.query_params.clear()
-                if saved: st.query_params["saved_email"] = saved
-            except Exception:
-                pass
+            if saved_email:
+                st.query_params["saved_email"] = saved_email
             st.rerun()
     st.markdown("---")
 
@@ -1029,8 +1029,6 @@ with st.sidebar:
             st.rerun()
 
 # HEADER
-
-# ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
 st.markdown("""
 
