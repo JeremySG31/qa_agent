@@ -450,8 +450,7 @@ hr { border-color:#1e293b !important; }
 }
 
 /* ── Anti-flash: ocultar errores internos de hidratación de Streamlit ── */
-/* El error "Missing Submit Button" es un bug de hidratación React.       */
-.stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty { 
+.stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty, div.stError, div.stWarning, div.stInfo { 
     display: none !important; 
 }
 
@@ -791,37 +790,8 @@ if not st.session_state.user_logged_in:
                 st.error(_login_err)
 
 
-            with st.expander("¿Olvidaste tu contraseña?"):
-
-                with st.form("reset_password_form"):
-
-                    reset_email = st.text_input("Ingresa tu correo para recuperar", key="reset_email")
-
-                    submit_reset = st.form_submit_button("Enviar enlace de recuperación", use_container_width=True)
-
                 
 
-                if submit_reset:
-
-                    if reset_email:
-
-                        with st.spinner("Enviando correo..."):
-
-                            reset_res = firebase_reset_password(reset_email)
-
-                            if "error" not in reset_res:
-
-                                st.success("¡Enlace enviado! Revisa tu bandeja de entrada o spam.")
-
-                            else:
-
-                                st.error(firebase_error_message(reset_res.get("error", {}).get("message", "")))
-
-                    else:
-
-                        st.warning("Ingresa tu correo electrónico primero.")
-
-                
 
         with tab_register:
 
@@ -919,6 +889,24 @@ if not st.session_state.user_logged_in:
             _reg_err = st.session_state.pop("_reg_error", None)
             if _reg_err:
                 st.error(_reg_err)
+
+        # ── Olvidaste tu contraseña (Fuera de las pestañas para evitar errores de contexto) ──
+        st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
+        with st.expander("¿Olvidaste tu contraseña?"):
+            with st.form("reset_password_form"):
+                reset_email = st.text_input("Ingresa tu correo para recuperar", key="reset_email")
+                submit_reset = st.form_submit_button("Enviar enlace de recuperación", use_container_width=True)
+            
+            if submit_reset:
+                if reset_email:
+                    with st.spinner("Enviando correo..."):
+                        reset_res = firebase_reset_password(reset_email)
+                        if "error" not in reset_res:
+                            st.success("¡Enlace enviado! Revisa tu bandeja de entrada o spam.")
+                        else:
+                            st.error(firebase_error_message(reset_res.get("error", {}).get("message", "")))
+                else:
+                    st.warning("Ingresa tu correo electrónico primero.")
 
                 
 
