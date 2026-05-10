@@ -80,7 +80,11 @@ st.markdown("""
 
 
 
-html, body, [class*="css"] { font-family:'Syne',sans-serif; background:#0d0f14; color:#e2e8f0; }
+html, body, [data-testid="stAppViewContainer"] { 
+    font-family:'Syne',sans-serif; 
+    background:#0d0f14 !important; 
+    color:#e2e8f0 !important; 
+}
 
 
 
@@ -263,7 +267,57 @@ html, body, [class*="css"] { font-family:'Syne',sans-serif; background:#0d0f14; 
 
 
 
-div[data-testid="stSidebar"] { background:#0a0c10 !important; border-right:1px solid #1e293b; }
+/* Sidebar Styling */
+div[data-testid="stSidebar"] { 
+    background: #0a0c10 !important; 
+    border-right: 1px solid #1e293b !important; 
+}
+
+div[data-testid="stSidebar"] h2 {
+    color: #22d3ee !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.5px;
+    margin-bottom: 20px !important;
+    font-family: 'Syne', sans-serif !important;
+}
+
+div[data-testid="stSidebar"] h3 {
+    color: #94a3b8 !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    margin-top: 15px !important;
+}
+
+div[data-testid="stSidebar"] .stButton button {
+    background: #111827 !important;
+    border: 1px solid #1e293b !important;
+    color: #94a3b8 !important;
+    font-size: 0.85rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    text-align: left !important;
+    padding: 10px 15px !important;
+    border-radius: 10px !important;
+    margin-bottom: 4px !important;
+}
+
+div[data-testid="stSidebar"] .stButton button:hover {
+    border-color: #22d3ee !important;
+    color: #22d3ee !important;
+    background: #0f172a !important;
+    transform: translateX(5px) !important;
+    box-shadow: 0 4px 12px rgba(34, 211, 238, 0.1) !important;
+}
+
+div[data-testid="stSidebar"] hr {
+    margin: 1.5rem 0 !important;
+    border-color: #1e293b !important;
+    opacity: 0.5 !important;
+}
+
+/* Forzar modo oscuro en toda la app */
+.stApp {
+    background-color: #0d0f14 !important;
+}
 
 .stTextInput [data-baseweb="input"], .stTextArea [data-baseweb="textarea"] {
 
