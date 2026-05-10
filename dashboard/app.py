@@ -759,16 +759,22 @@ if not st.session_state.user_logged_in:
                                     del st.query_params["saved_email"]
                                     st.session_state["_email_to_remove"] = True
 
+                                st.session_state.pop("_login_error", None)
                                 st.rerun()
 
                             else:
 
-                                st.error(firebase_error_message(res.get("error", {}).get("message", "Error desconocido")))
+                                st.session_state["_login_error"] = firebase_error_message(res.get("error", {}).get("message", "Error desconocido"))
+                                st.rerun()
 
                     else:
 
-                        st.warning("Completa los campos")
+                        st.session_state["_login_error"] = "Completa los campos de correo y contraseña."
+                        st.rerun()
 
+            # Mostrar error de login fuera del form (persistido en session state)
+            if st.session_state.get("_login_error"):
+                st.error(st.session_state.pop("_login_error"))
 
 
             with st.expander("¿Olvidaste tu contraseña?"):
