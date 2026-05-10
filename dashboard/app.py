@@ -1,4 +1,4 @@
-﻿import sys, os, json, subprocess, re, importlib, uuid
+import sys, os, json, subprocess, re, importlib, uuid
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import quote
@@ -898,7 +898,7 @@ def render_result_card(result, idx):
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
       <div class="result-title">#{idx:02d} — {name}</div>
-      <div class="result-meta">­ƒòÉ {ts_fmt} &nbsp;|&nbsp; {len(steps)} pasos</div>
+      <div class="result-meta">📅 {ts_fmt} &nbsp;|&nbsp; {len(steps)} pasos</div>
     </div>
     <div>{badge}</div>
   </div>
@@ -907,7 +907,7 @@ def render_result_card(result, idx):
 
     if steps:
 
-        with st.expander(f"­ƒôï Ver {len(steps)} pasos ejecutados"):
+        with st.expander(f"📋 Ver {len(steps)} pasos ejecutados"):
 
             render_steps(steps)
 
@@ -1353,12 +1353,12 @@ with tab_builder:
         REQUIRES_SEL = {"find_and_type","click","hover","scroll_to","select_option","validate_text","validate_exists"}
         REQUIRES_VAL = {"open_url","find_and_type","select_option","validate_text","validate_url","wait"}
 
-        if st.button("A├▒adir paso", use_container_width=True):
+        if st.button("Añadir paso", use_container_width=True):
             err = None
             if b_action in REQUIRES_SEL and not b_selector and b_action != "scroll_to":
-                err = "Selector CSS requerido para esta acci├│n."
+                err = "Selector CSS requerido para esta acción."
             elif b_action in REQUIRES_VAL and not b_value and b_action not in ("scroll_to",):
-                err = "Valor requerido para esta acci├│n."
+                err = "Valor requerido para esta acción."
             
             if err: st.error(err)
             else:
@@ -1388,7 +1388,7 @@ with tab_builder:
                     '<div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;'
                     'padding:30px;text-align:center;color:#475569;">'
                     '<div style="font-size:2rem;margin-bottom:8px">+</div>'
-                    '<div>No hay pasos a├║n. A├▒ade acciones o gen├®ralas con IA.</div>'
+                    '<div>No hay pasos aún. Añade acciones o genéralas con IA.</div>'
                     '</div>',
                     unsafe_allow_html=True)
                 return
@@ -1415,8 +1415,8 @@ with tab_builder:
                 .sortable-item { font-size: 0.75rem !important; padding: 8px 10px !important; }
             }
             """
-            st.caption("­ƒû▒´©Å Arrastra para reordenar o a la Papelera para borrar.")
-            columns = [{"header": "­ƒôï ORDEN DE EJECUCI├ôN", "items": display_list}, {"header": "­ƒùæ´©Å PAPELERA", "items": []}]
+            st.caption("🖱️ Arrastra para reordenar o a la Papelera para borrar.")
+            columns = [{"header": "📋 ORDEN DE EJECUCIÓN", "items": display_list}, {"header": "🗑️ PAPELERA", "items": []}]
             results = sort_items(columns, direction="vertical", multi_containers=True, custom_style=custom_style)
             
             new_display_list = results[0].get("items", [])
@@ -1425,7 +1425,7 @@ with tab_builder:
             
             if len(new_steps) != len(custom_steps) or new_display_list != display_list:
                 st.session_state.custom_steps = new_steps
-                if trash_list: st.toast(f"­ƒùæ´©Å Eliminado(s) {len(trash_list)} paso(s)")
+                if trash_list: st.toast(f"🗑️ Eliminado(s) {len(trash_list)} paso(s)")
                 st.rerun(scope="fragment")
 
         render_sortable_steps()
@@ -1466,7 +1466,7 @@ with tab_builder:
 
     with col_c2:
 
-        b_timeout = st.select_slider("Tiempo l├¡mite (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
+        b_timeout = st.select_slider("Tiempo límite (seg)", options=[5,10,15,20,30], value=15, key="b_timeout")
 
         b_delay   = st.select_slider("Pausa (seg)", options=[0.0,0.5,1.0,2.0], value=0.5, key="b_delay")
 
@@ -1474,9 +1474,9 @@ with tab_builder:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        run_custom = st.button("­ƒÜÇ Ejecutar Prueba", type="primary", use_container_width=True)
+        run_custom = st.button("🚀 Ejecutar Prueba", type="primary", use_container_width=True)
         if "invitado_" in st.session_state.get("user_email", ""):
-            st.caption("ÔÜá´©Å M├íximo 7 pasos en modo invitado")
+            st.caption("⚠️ Máximo 7 pasos en modo invitado")
 
         
 
@@ -1770,7 +1770,7 @@ with tab_results:
 
             filtered = [r for r in filtered if r.get("status") == filter_status]
 
-        if sort_order == "M├ís antiguo":
+        if sort_order == "Más antiguo":
 
             filtered = list(reversed(filtered))
 
