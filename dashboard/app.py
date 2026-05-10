@@ -447,19 +447,6 @@ hr { border-color:#1e293b !important; }
   
   /* Streamlit columns spacing */
   div[data-testid="column"] { margin-bottom: 1rem !important; }
-
-  /* Force sidebar hidden on mobile — user can still open it via the hamburger */
-  section[data-testid="stSidebar"] {
-    transform: translateX(-110%) !important;
-    position: fixed !important;
-    height: 100dvh !important;
-    z-index: 999999 !important;
-    transition: transform 0.3s ease !important;
-  }
-  section[data-testid="stSidebar"].expanded,
-  section[data-testid="stSidebar"][data-state="expanded"] {
-    transform: translateX(0) !important;
-  }
 }
 </style>
 
