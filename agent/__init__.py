@@ -4,10 +4,7 @@ Módulo principal del agente de automatización QA.
 
 Submódulos:
   - planner: Generación de planes de prueba desde prompts (LLM)
-  - executor: Ejecución de pasos (web, desktop, mobile)
-  - executor_web: Automatización web con Selenium
-  - executor_desktop: Automatización desktop (placeholder)
-  - executor_mobile: Testing mobile (placeholder)
+  - executor: Ejecución de pasos web con Selenium
   - reporter: Guardado y carga de resultados JSON
 """
 

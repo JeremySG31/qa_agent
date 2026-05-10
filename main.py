@@ -35,19 +35,15 @@ except ImportError:
 def parse_args():
     """Parsea argumentos de línea de comandos."""
     parser = argparse.ArgumentParser(
-        description="🤖 Agente QA con IA – Automatización de pruebas local",
+        description="🤖 Agente QA con IA – Automatización Web No-Code",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos:
   python main.py "prueba el login"
-  python main.py "busca en google" --type web --no-headless
-  python main.py "abre notepad" --type desktop
-  python main.py "pulsa el botón" --type mobile
+  python main.py "busca en google" --no-headless
 
-Tipos de test disponibles:
+Tipo de test admitido:
   web      Automatización web con Selenium (predeterminado)
-  desktop  Desktop automation (placeholder, próximamente)
-  mobile   Mobile testing con Appium (placeholder, próximamente)
         """,
     )
 
@@ -59,16 +55,9 @@ Tipos de test disponibles:
     )
 
     parser.add_argument(
-        "--type",
-        choices=["web", "desktop", "mobile"],
-        default="web",
-        help="Tipo de prueba a ejecutar (default: web)",
-    )
-
-    parser.add_argument(
         "--no-headless",
         action="store_true",
-        help="Muestra el navegador durante la ejecución (solo web, útil para debug)",
+        help="Muestra el navegador durante la ejecución (útil para debug)",
     )
 
     return parser.parse_args()
@@ -78,14 +67,13 @@ def main():
     """Función principal del agente QA."""
     args = parse_args()
     prompt = args.prompt
-    test_type = args.type
+    test_type = "web"
     headless = not args.no_headless
 
     print("=" * 70)
-    print("AGENTE QA - AUTOMATIZACION LOCAL CON IA")
+    print("AGENTE QA - AUTOMATIZACION WEB CON IA")
     print("=" * 70)
     print(f"Prompt: {prompt}")
-    print(f"Tipo: {test_type}")
     print(f"Modo: {'headless' if headless else 'visible'}")
     print("-" * 70)
 
@@ -100,10 +88,10 @@ def main():
 
     print("\n" + "-" * 70)
 
-    # 2️⃣  Ejecutar la prueba con el executor apropiado
+    # 2️⃣  Ejecutar la prueba con el executor de Selenium
     test_name = f"Test: {prompt[:50]}"
-    print(f"\nEjecutando {test_type} automation...")
-    result = run_test(test_name, steps, test_type=test_type, headless=headless)
+    print(f"\nEjecutando web automation...")
+    result = run_test(test_name, steps, headless=headless)
 
     print("\n" + "-" * 70)
     

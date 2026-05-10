@@ -753,6 +753,7 @@ if not st.session_state.user_logged_in:
                                 st.session_state.user_email = res.get("email")
                                 st.session_state.firebase_id_token = res.get("idToken", "")
                                 st.session_state.custom_steps = []
+                                st.session_state["_needs_scroll_to_top"] = True
 
                                 st.query_params["user"] = st.session_state.user_email
 
@@ -869,6 +870,7 @@ if not st.session_state.user_logged_in:
                                 st.session_state.ai_config = {}
 
                                 st.session_state.custom_steps = []
+                                st.session_state["_needs_scroll_to_top"] = True
 
                                 st.query_params["user"] = st.session_state.user_email
 
@@ -907,6 +909,7 @@ if not st.session_state.user_logged_in:
             st.session_state.ai_config = {} # No tiene API Key guardada
 
             st.session_state.custom_steps = []
+            st.session_state["_needs_scroll_to_top"] = True
 
             st.query_params["user"] = st.session_state.user_email
 
@@ -923,6 +926,15 @@ if not st.session_state.user_logged_in:
     st.stop()
 
     
+
+# --- Forzar Scroll al Inicio (Solo tras login) ---
+if st.session_state.get("_needs_scroll_to_top"):
+    st.session_state.pop("_needs_scroll_to_top")
+    components.html("""
+        <script>
+        window.parent.scrollTo(0, 0);
+        </script>
+    """, height=0)
 
 # --- Persistencia de Correo (Guardar en localStorage) ---
 if st.session_state.get("_email_to_save"):
@@ -1128,11 +1140,11 @@ def render_plan_preview(steps):
 
 
 
-def run_test_subprocess(prompt, headless, test_type="web"):
+def run_test_subprocess(prompt, headless):
 
     """Ejecuta main.py en subproceso y retorna stdout/returncode."""
 
-    cmd = [sys.executable, str(ROOT / "main.py"), prompt, "--type", test_type]
+    cmd = [sys.executable, str(ROOT / "main.py"), prompt]
 
     if not headless:
 
@@ -1614,6 +1626,7 @@ with tab_builder:
     with col_c1:
 
         b_test_name = st.text_input("Nombre de la prueba (Opcional)", placeholder="Ej: Comprar un producto", key="b_name")
+        b_visible = st.toggle("Ver navegador", value=False, help="Muestra la ventana del navegador durante el test (solo PC)")
 
     with col_c2:
 
@@ -1707,9 +1720,9 @@ with tab_builder:
 
             import importlib
 
-            from agent import executor_web
+            from agent import executor
 
-            importlib.reload(executor_web)
+            importlib.reload(executor)
 
             from agent.reporter import save_result as _save
 
@@ -1734,8 +1747,10 @@ with tab_builder:
                 st.stop()
 
             with st.status("Ejecutando: " + name, expanded=True) as live_status:
-                for event in executor_web.run_test_streaming(
-                    name, st.session_state.custom_steps, timeout=b_timeout,
+                for event in executor.run_test_streaming(
+                    name, st.session_state.custom_steps, 
+                    headless=not b_visible,
+                    timeout=b_timeout,
                     step_delay=b_delay, screenshot_on_fail=False,
                 ):
 
