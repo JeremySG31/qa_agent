@@ -14,6 +14,7 @@ from datetime import datetime
 from urllib.parse import quote
 import streamlit as st
 import streamlit.components.v1 as components
+import platform
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
