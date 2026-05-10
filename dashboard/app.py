@@ -1640,14 +1640,13 @@ with tab_builder:
         b_test_name = st.text_input("Nombre de la prueba (Opcional)", placeholder="Ej: Comprar un producto", key="b_name")
         
         is_cloud = platform.system() == "Linux"
-        b_visible = st.toggle(
-            "Ver navegador", 
-            value=False, 
-            disabled=is_cloud,
-            help="Muestra la ventana del navegador durante el test (solo disponible localmente)"
-        )
-        if is_cloud:
-            st.caption("ℹ️ El navegador visible solo funciona en ejecución local.")
+        b_visible = False
+        if not is_cloud:
+            b_visible = st.toggle(
+                "Ver navegador", 
+                value=False, 
+                help="Muestra la ventana del navegador durante el test (solo disponible localmente)"
+            )
 
     with col_c2:
 
