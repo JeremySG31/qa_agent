@@ -62,10 +62,36 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Forzar colapso en móvil al inicio de sesión
-if "sidebar_init_mobile" not in st.session_state:
-    st.session_state["sidebar_init_mobile"] = True
-    st.session_state["_close_sidebar_mobile"] = True
+# --- ESTRATEGIA DE CIERRE DE SIDEBAR EN MÓVIL ---
+if "sidebar_closed_mobile" not in st.session_state:
+    st.session_state["sidebar_closed_mobile"] = False
+
+# Script inyectado al inicio para asegurar colapso en móvil
+components.html("""
+    <script>
+    (function() {
+        if (window.innerWidth > 768) return;
+        function tryClose() {
+            var doc = window.parent.document;
+            // Selectores para el botón de colapso de Streamlit
+            var btn = doc.querySelector('[data-testid="stSidebarCollapseButton"]') || 
+                      doc.querySelector('button[aria-label="Close sidebar"]') ||
+                      doc.querySelector('[data-testid="stSidebar"] button');
+            
+            if (btn && btn.offsetParent !== null) {
+                // Solo clic si está visible (lo que significa que está abierta)
+                btn.click();
+                return true;
+            }
+            return false;
+        }
+        // Intentos múltiples para asegurar la captura del elemento tras la hidratación
+        setTimeout(tryClose, 100);
+        setTimeout(tryClose, 500);
+        setTimeout(tryClose, 1500);
+    })();
+    </script>
+""", height=0)
 
 
 
@@ -749,29 +775,7 @@ if st.session_state.get("_needs_scroll_to_top"):
         </script>
     """, height=0)
 
-# --- Cerrar Sidebar en M├│vil tras login ---
-if st.session_state.pop("_close_sidebar_mobile", False):
-    components.html("""
-        <script>
-        (function() {
-            if (window.innerWidth > 768) return;
-            function tryClose() {
-                var doc = window.parent.document;
-                var selectors = [
-                    '[data-testid="stSidebarCollapseButton"]',
-                    'button[aria-label="Close sidebar"]',
-                    '[data-testid="stSidebar"] button[kind="header"]'
-                ];
-                for (var i = 0; i < selectors.length; i++) {
-                    var btn = doc.querySelector(selectors[i]);
-                    if (btn) { btn.click(); return true; }
-                }
-                return false;
-            }
-            setTimeout(function(){ if(!tryClose()) setTimeout(tryClose, 600); }, 300);
-        })();
-        </script>
-    """, height=0)
+# El cierre ahora se maneja al inicio para mayor efectividad
 
 # --- Persistencia de Correo (Guardar en localStorage) ---
 if st.session_state.get("_email_to_save"):
