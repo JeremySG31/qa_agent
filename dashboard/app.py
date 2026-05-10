@@ -1,4 +1,4 @@
-﻿import sys, os, json, subprocess, re, importlib, uuid
+import sys, os, json, subprocess, re, importlib, uuid
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import quote
@@ -743,7 +743,28 @@ if st.session_state.get("_needs_scroll_to_top"):
         </script>
     """, height=0)
 
-# El cierre ahora se maneja al inicio para mayor efectividad
+# --- Cerrar Sidebar en Móvil tras cambio de estado (Login/Guest) ---
+if st.session_state.pop("_close_sidebar_mobile", False):
+    components.html("""
+        <script>
+        (function() {
+            if (window.innerWidth > 768) return;
+            function tryClose() {
+                var doc = window.parent.document;
+                var btn = doc.querySelector('[data-testid="stSidebarCollapseButton"]') || 
+                          doc.querySelector('button[aria-label="Close sidebar"]') ||
+                          doc.querySelector('[data-testid="stSidebar"] button[kind="header"]');
+                if (btn && btn.offsetParent !== null) {
+                    btn.click();
+                    return true;
+                }
+                return false;
+            }
+            setTimeout(tryClose, 300);
+            setTimeout(tryClose, 800);
+        })();
+        </script>
+    """, height=0)
 
 # --- Persistencia de Correo (Guardar en localStorage) ---
 if st.session_state.get("_email_to_save"):
