@@ -450,18 +450,18 @@ hr { border-color:#1e293b !important; }
 }
 
 /* ── Anti-flash: ocultar errores internos de hidratación de Streamlit ── */
-/* El error "Missing Submit Button" es un bug de hidratación React,      */
-/* nunca debe ser visible al usuario.                                     */
-.stException { display: none !important; }
-[data-testid="stNotification"] { display: none !important; }
+/* El error "Missing Submit Button" es un bug de hidratación React.       */
+.stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty { 
+    display: none !important; 
+}
 
 /* Fade-in del contenido del login para ocultar cualquier flash inicial */
 [data-testid="stMain"] .block-container {
-  animation: qa-fadein 0.25s ease 0.35s both;
+  animation: qa-fadein 0.3s ease 0.5s both;
 }
 @keyframes qa-fadein {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; filter: blur(5px); }
+  to   { opacity: 1; filter: blur(0); }
 }
 </style>
 
@@ -825,13 +825,17 @@ if not st.session_state.user_logged_in:
 
         with tab_register:
 
-            r_email = st.text_input("Correo electrónico", key="r_email")
+            with st.form("register_form"):
 
-            r_pass = st.text_input("Contraseña", type="password", key="r_pass")
+                r_email = st.text_input("Correo electrónico", key="r_email")
 
-            r_pass2 = st.text_input("Repetir contraseña", type="password", key="r_pass2")
+                r_pass = st.text_input("Contraseña", type="password", key="r_pass")
 
-            if st.button("Crear cuenta", use_container_width=True):
+                r_pass2 = st.text_input("Repetir contraseña", type="password", key="r_pass2")
+
+                submitted_reg = st.form_submit_button("Crear cuenta", use_container_width=True)
+
+            if submitted_reg:
 
                 import re
 
@@ -867,7 +871,8 @@ if not st.session_state.user_logged_in:
 
                     if not is_valid:
 
-                        st.error(error_msg)
+                        st.session_state["_reg_error"] = error_msg
+                        st.rerun()
 
                     else:
 
@@ -883,12 +888,11 @@ if not st.session_state.user_logged_in:
 
                                 st.session_state.firebase_id_token = res.get("idToken", "")
 
-                                # CARGAR CONFIGURACIÓN DESDE FIRESTORE (estará vacío pero inicializa)
-
                                 st.session_state.ai_config = {}
 
                                 st.session_state.custom_steps = []
                                 st.session_state["_needs_scroll_to_top"] = True
+                                st.session_state["_close_sidebar_mobile"] = True
 
                                 st.query_params["user"] = st.session_state.user_email
 
@@ -898,15 +902,23 @@ if not st.session_state.user_logged_in:
 
                                 raw_error = res.get("error", {}).get("message", "Error desconocido")
 
-                                st.error(firebase_error_message(raw_error))
+                                st.session_state["_reg_error"] = firebase_error_message(raw_error)
+                                st.rerun()
 
                 elif r_pass != r_pass2:
 
-                    st.warning("Las contraseñas no coinciden.")
+                    st.session_state["_reg_error"] = "Las contraseñas no coinciden."
+                    st.rerun()
 
                 else:
 
-                    st.warning("Completa todos los campos.")
+                    st.session_state["_reg_error"] = "Completa todos los campos."
+                    st.rerun()
+
+            # Mostrar error de registro fuera del form
+            _reg_err = st.session_state.pop("_reg_error", None)
+            if _reg_err:
+                st.error(_reg_err)
 
                 
 
