@@ -77,26 +77,22 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap');
 
-html, body, [data-testid="stAppViewContainer"] { 
-    font-family:'Syne',sans-serif; 
-    background:#0d0f14 !important; 
-    color:#e2e8f0 !important; 
-}
-
 /* --- ESTRATEGIA NUCLEAR ANTI-FLASH --- */
-/* Ocultamos el contenedor principal durante la hidratacion para evitar parpadeos */
 [data-testid="stAppViewContainer"] {
     visibility: hidden;
     animation: qa-nuclear-fadein 0.1s steps(1) 1.2s forwards;
 }
+@keyframes qa-nuclear-fadein { to { visibility: visible; } }
 
-@keyframes qa-nuclear-fadein {
-    to { visibility: visible; }
-}
-
-/* Ocultar errores internos de hidratacion de React/Streamlit */
+/* Ocultar errores técnicos de hidratación */
 .stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty { 
     display: none !important; 
+}
+
+html, body, [data-testid="stAppViewContainer"] { 
+    font-family:'Syne',sans-serif; 
+    background:#0d0f14 !important; 
+    color:#e2e8f0 !important; 
 }
 
 .qa-header {
@@ -136,6 +132,7 @@ html, body, [data-testid="stAppViewContainer"] {
   background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0px 4px 8px rgba(56,189,248,0.3));
 }
 .metric-label { font-size:.85rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-top:10px; font-weight:700; }
 
@@ -143,9 +140,48 @@ html, body, [data-testid="stAppViewContainer"] {
   background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
   border: 1px solid #1e293b;
   border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
+  transition: all .25s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
 }
+.result-card:hover { border-color:#334155; transform:translateY(-2px); box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); }
 .result-card.pass  { border-left:4px solid #10b981; }
 .result-card.fail  { border-left:4px solid #ef4444; }
+.result-title { font-family:'JetBrains Mono',monospace; font-size:.9rem; font-weight:600; color:#e2e8f0; margin-bottom:6px; }
+.result-meta  { font-size:.75rem; color:#64748b; font-family:'JetBrains Mono',monospace; }
+
+.badge-pass { display:inline-block; background:#064e3b; color:#10b981; border:1px solid #10b981; border-radius:6px; padding:2px 10px; font-size:.75rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.badge-fail { display:inline-block; background:#450a0a; color:#ef4444; border:1px solid #ef4444; border-radius:6px; padding:2px 10px; font-size:.75rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
+
+.step-item {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:8px 12px; border-radius:6px; margin-bottom:6px;
+  background:#0f172a; border:1px solid #1e293b;
+  font-family:'JetBrains Mono',monospace; font-size:.78rem;
+}
+.step-ok  { border-left:3px solid #10b981; }
+.step-err { border-left:3px solid #ef4444; }
+.step-icon { font-size:1rem; flex-shrink:0; }
+.step-text { color:#cbd5e1; }
+.step-action { color:#22d3ee; font-weight:600; margin-right:6px; }
+
+.plan-preview {
+  background:#0f172a; border:1px solid #22d3ee33;
+  border-radius:10px; padding:16px; margin:12px 0;
+}
+.plan-step {
+  display:flex; gap:10px; align-items:flex-start;
+  padding:6px 0; border-bottom:1px solid #1e293b;
+  font-family:'JetBrains Mono',monospace; font-size:.8rem; color:#94a3b8;
+}
+.plan-step:last-child { border-bottom:none; }
+.plan-num  { color:#818cf8; font-weight:700; min-width:24px; }
+.plan-act  { color:#22d3ee; font-weight:600; min-width:130px; }
+
+.section-title {
+  font-size:1.15rem; font-weight:700; color:#e2e8f0;
+  margin:20px 0 12px; padding-bottom:8px;
+  border-bottom:1px solid #1e293b;
+}
 
 /* Sidebar Styling */
 [data-testid="stSidebar"] { 
@@ -157,21 +193,56 @@ html, body, [data-testid="stAppViewContainer"] {
     font-weight: 800 !important;
     font-family: 'Syne', sans-serif !important;
 }
-
-.stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty { 
-    display: none !important; 
+[data-testid="stSidebar"] .stButton button {
+    background: rgba(30, 41, 59, 0.5) !important;
+    border: 1px solid #334155 !important;
+    color: #cbd5e1 !important;
+    padding: 10px 15px !important;
+    border-radius: 10px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+[data-testid="stSidebar"] .stButton button:hover {
+    border-color: #22d3ee !important;
+    color: #ffffff !important;
+    background: rgba(34, 211, 238, 0.1) !important;
+    transform: translateX(5px) !important;
 }
 
-/* Fade-in del contenido del login para ocultar cualquier flash inicial */
+.stTextInput [data-baseweb="input"], .stTextArea [data-baseweb="textarea"] {
+  background-color: #111827 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+}
+.stTextInput input, .stTextArea textarea {
+  color: #e2e8f0 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+.login-logo {
+  font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800;
+  background: linear-gradient(135deg, #22d3ee, #818cf8, #f472b6);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0px 4px 10px rgba(56,189,248,0.3));
+}
+.login-subtitle { color: #94a3b8; font-size: 1rem; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .qa-header { padding: 18px 20px !important; }
+  .qa-header h1 { font-size: 1.5rem !important; }
+  .metric-value { font-size: 1.8rem !important; }
+  .login-logo { font-size: 2.2rem !important; }
+}
+
+/* Fade-in suave para el contenido principal */
 [data-testid="stMain"] .block-container {
-  animation: qa-fadein 0.3s ease 0.5s both;
+  animation: qa-fadein 0.4s ease 1.3s both;
 }
 @keyframes qa-fadein {
-  from { opacity: 0; filter: blur(5px); }
-  to   { opacity: 1; filter: blur(0); }
+  from { opacity: 0; transform: translateY(10px); filter: blur(5px); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 </style>
-
 """, unsafe_allow_html=True)
 
 
@@ -386,7 +457,7 @@ def firebase_load_settings(email):
 
 
 
-# ÔöÇÔöÇ Manejo de C├│digo OAuth (ELIMINADO) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+# --- Manejo de Código OAuth (ELIMINADO) ---
 
 # Se elimina por restricciones de Streamlit Cloud e iframe.
 
@@ -402,7 +473,7 @@ if st.session_state.pop("_needs_key_reload", False):
 
 if not st.session_state.user_logged_in:
 
-    # Nota: la persistencia del correo se hace solo via query params (sin redirecci├│n JS para evitar flashes)
+    # Nota: la persistencia del correo se hace solo via query params (sin redirección JS para evitar flashes)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
@@ -490,7 +561,7 @@ if not st.session_state.user_logged_in:
 
                     else:
 
-                        st.session_state["_login_error"] = "Completa los campos de correo y contrase├▒a."
+                        st.session_state["_login_error"] = "Completa los campos de correo y contraseña."
 
             # Mostrar error de login fuera del form (persistido en session state)
             _login_err = st.session_state.pop("_login_error", None)
@@ -498,13 +569,13 @@ if not st.session_state.user_logged_in:
                 st.error(_login_err)
 
 
-            with st.expander("┬┐Olvidaste tu contrase├▒a?"):
+            with st.expander("¿Olvidaste tu contraseña?"):
 
                 with st.form("reset_password_form"):
 
                     reset_email = st.text_input("Ingresa tu correo para recuperar", key="reset_email")
 
-                    submit_reset = st.form_submit_button("Enviar enlace de recuperaci├│n", use_container_width=True)
+                    submit_reset = st.form_submit_button("Enviar enlace de recuperación", use_container_width=True)
 
                 
 
@@ -518,7 +589,7 @@ if not st.session_state.user_logged_in:
 
                             if "error" not in reset_res:
 
-                                st.success("┬íEnlace enviado! Revisa tu bandeja de entrada o spam.")
+                                st.success("¡Enlace enviado! Revisa tu bandeja de entrada o spam.")
 
                             else:
 
@@ -1443,17 +1514,17 @@ with tab_builder:
 
         lr = st.session_state.last_result
 
-        st.markdown(f"### ├Ültima ejecución: {lr['name']}")
+        st.markdown(f"### Última ejecución: {lr['name']}")
 
         ok = lr['status'] == 'PASS'
 
         if ok:
 
-            st.success("Ô£à Completado con ├®xito")
+            st.success("✅ Completado con éxito")
 
         else:
 
-            st.error("ÔØî Fall├│ el test")
+            st.error("❌ Falló el test")
 
             
 
@@ -1463,7 +1534,7 @@ with tab_builder:
 
                 s_ok = s.get("status") == "ok"
 
-                icon = "Ô£à" if s_ok else "ÔØî"
+                icon = "✅" if s_ok else "❌"
 
                 st.write(f"**Paso {idx}:** {icon} [{s.get('action')}] - {s.get('detail', 'OK')}")
 
@@ -1489,7 +1560,7 @@ with tab_builder:
 
         if "invitado_" in st.session_state.get("user_email", "") and len(get_cached_results(st.session_state.get("user_email", ""))) >= 10:
 
-            st.error("­ƒøæ **L├¡mite Diario Alcanzado:** Has llegado al l├¡mite de 10 pruebas gratuitas en las ├║ltimas 24 horas. ┬íEspera un poco o reg├¡strate para continuar usando QA Agent sin l├¡mites!")
+            st.error("🚀 **Límite Diario Alcanzado:** Has llegado al límite de 10 pruebas gratuitas en las últimas 24 horas. ¡Espera un poco o regístrate para continuar usando QA Agent sin límites!")
 
             st.stop()
 
@@ -1524,7 +1595,7 @@ with tab_builder:
             user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
 
             if "invitado_" in user_email_check and len(st.session_state.custom_steps) > 7:
-                st.error("­ƒøæ **L├¡mite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
+                st.error("🚀 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
                 st.stop()
 
             with st.status("Ejecutando: " + name, expanded=True) as live_status:
@@ -1615,7 +1686,7 @@ with tab_builder:
 
                 
 
-                # Limpiar Base64 antes de guardar para no exceder l├¡mite de 1MB de Firestore
+                # Limpiar Base64 antes de guardar para no exceder límite de 1MB de Firestore
 
                 clean_steps = []
 
@@ -1665,13 +1736,13 @@ with tab_builder:
 
 # --- Historial de Resultados ---
 
-# TAB 3 ┬À HISTORIAL DE RESULTADOS
+# --- Historial de Resultados ---
 
 # --- Historial de Resultados ---
 
 with tab_results:
 
-    st.markdown('<div class="section-title">­ƒôè Historial de resultados</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📊 Historial de resultados</div>', unsafe_allow_html=True)
 
 
 
@@ -1685,7 +1756,7 @@ with tab_results:
 
     if not results:
 
-        st.info("­ƒöì No hay resultados a├║n. Ejecuta tu primer test en la pestaña **Ejecutar Test**.")
+        st.info("🔍 No hay resultados aún. Ejecuta tu primer test en la pestaña **Ejecutar Test**.")
 
     else:
 
@@ -1693,7 +1764,7 @@ with tab_results:
 
         with col_f1:
 
-            search = st.text_input("­ƒöì Buscar test", placeholder="Filtrar por nombre...", key="search")
+            search = st.text_input("🔍 Buscar test", placeholder="Filtrar por nombre...", key="search")
 
         with col_f2:
 
@@ -1701,7 +1772,7 @@ with tab_results:
 
         with col_f3:
 
-            sort_order = st.selectbox("Orden", ["M├ís reciente", "M├ís antiguo"], key="fsort")
+            sort_order = st.selectbox("Orden", ["Más reciente", "Más antiguo"], key="fsort")
 
 
 
@@ -1745,7 +1816,7 @@ st.markdown(
 
     "<p style='text-align:center;color:#334155;font-size:.75rem;font-family:JetBrains Mono,monospace'>"
 
-    "QA Agent No-Code ┬À Selenium + IA ┬À Python ┬À Streamlit"
+    "QA Agent No-Code · Selenium + IA · Python · Streamlit"
 
     "</p>",
 
