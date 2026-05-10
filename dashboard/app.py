@@ -447,6 +447,19 @@ hr { border-color:#1e293b !important; }
   
   /* Streamlit columns spacing */
   div[data-testid="column"] { margin-bottom: 1rem !important; }
+
+  /* Force sidebar hidden on mobile — user can still open it via the hamburger */
+  section[data-testid="stSidebar"] {
+    transform: translateX(-110%) !important;
+    position: fixed !important;
+    height: 100dvh !important;
+    z-index: 999999 !important;
+    transition: transform 0.3s ease !important;
+  }
+  section[data-testid="stSidebar"].expanded,
+  section[data-testid="stSidebar"][data-state="expanded"] {
+    transform: translateX(0) !important;
+  }
 }
 </style>
 
@@ -680,18 +693,7 @@ if st.session_state.pop("_needs_key_reload", False):
 
 if not st.session_state.user_logged_in:
 
-    # --- Persistencia de Correo (Cargar de localStorage) ---
-    components.html("""
-        <script>
-        const key = 'saved_qa_email';
-        const urlParams = new URLSearchParams(window.parent.location.search);
-        const savedEmail = localStorage.getItem(key);
-        if (savedEmail && !urlParams.has('saved_email')) {
-            urlParams.set('saved_email', savedEmail);
-            window.parent.location.href = window.parent.location.pathname + '?' + urlParams.toString();
-        }
-        </script>
-    """, height=0)
+    # Nota: la persistencia del correo se hace solo via query params (sin redirección JS para evitar flashes)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
@@ -756,6 +758,7 @@ if not st.session_state.user_logged_in:
                                 st.session_state.firebase_id_token = res.get("idToken", "")
                                 st.session_state.custom_steps = []
                                 st.session_state["_needs_scroll_to_top"] = True
+                                st.session_state["_close_sidebar_mobile"] = True
 
                                 st.query_params["user"] = st.session_state.user_email
 
@@ -912,6 +915,7 @@ if not st.session_state.user_logged_in:
 
             st.session_state.custom_steps = []
             st.session_state["_needs_scroll_to_top"] = True
+            st.session_state["_close_sidebar_mobile"] = True
 
             st.query_params["user"] = st.session_state.user_email
 
@@ -935,6 +939,30 @@ if st.session_state.get("_needs_scroll_to_top"):
     components.html("""
         <script>
         window.parent.scrollTo(0, 0);
+        </script>
+    """, height=0)
+
+# --- Cerrar Sidebar en Móvil tras login ---
+if st.session_state.pop("_close_sidebar_mobile", False):
+    components.html("""
+        <script>
+        (function() {
+            if (window.innerWidth > 768) return;
+            function tryClose() {
+                var doc = window.parent.document;
+                var selectors = [
+                    '[data-testid="stSidebarCollapseButton"]',
+                    'button[aria-label="Close sidebar"]',
+                    '[data-testid="stSidebar"] button[kind="header"]'
+                ];
+                for (var i = 0; i < selectors.length; i++) {
+                    var btn = doc.querySelector(selectors[i]);
+                    if (btn) { btn.click(); return true; }
+                }
+                return false;
+            }
+            setTimeout(function(){ if(!tryClose()) setTimeout(tryClose, 600); }, 300);
+        })();
         </script>
     """, height=0)
 
