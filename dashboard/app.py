@@ -1533,6 +1533,8 @@ with tab_builder:
         else:
 
             from agent import executor
+            import importlib
+            importlib.reload(executor)
 
             from datetime import timezone, timedelta
 
