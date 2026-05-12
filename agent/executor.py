@@ -78,7 +78,8 @@ def _build_driver(headless: bool = True, incognito: bool = False):
     """
     is_linux = platform.system() == "Linux"
     
-    # Intentar usar undetected-chromedriver (La mejor opción anti-detección)
+    # 1. Intentar Undetected Chrome (Modo Sigilo)
+    _safe_print("   [1/3] Iniciando motor de sigilo...")
     try:
         import undetected_chromedriver as uc
         options = uc.ChromeOptions()
@@ -90,15 +91,16 @@ def _build_driver(headless: bool = True, incognito: bool = False):
         if incognito:
             options.add_argument("--incognito")
         
-        # Parámetro version_main ayuda a evitar esperas innecesarias
-        driver = uc.Chrome(options=options, version_main=None, use_subprocess=True)
-        driver.set_page_load_timeout(30)
-        _safe_print("Navegador: Google Chrome (Undetected Mode)")
+        # Iniciar driver (sin subprocesos para mayor estabilidad en Windows)
+        driver = uc.Chrome(options=options)
+        driver.set_page_load_timeout(25)
+        _safe_print("   [OK] Navegador: Chrome (Safe Mode)")
         return driver
     except Exception as e:
-        _safe_print(f"Modo Undetected no disponible. Usando Selenium estándar...")
+        _safe_print(f"   [!] Modo sigilo no disponible. Cambiando a estándar...")
 
-    # Fallback a Selenium estándar si falla el anterior
+    # 2. Fallback a Selenium estándar (Más rápido)
+    _safe_print("   [2/3] Iniciando motor estándar...")
     default = _get_default_browser()
     browsers_to_try = [default]
     for b in ["chrome", "edge"]:
