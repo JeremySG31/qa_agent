@@ -3,7 +3,7 @@ import random
 import string
 import time
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List, Dict
 
 class DomainRegistrar(ABC):
     """Interfaz base para proveedores de registro de dominios."""
@@ -49,7 +49,7 @@ class CloudflareRegistrar(DomainRegistrar):
 class EmailService(ABC):
     """Interfaz base para servicios de correo electrónico."""
     @abstractmethod
-    def get_emails(self, login: str, domain: str) -> List[Dict]:
+    def get_emails(self, address: str) -> List[Dict]:
         pass
 
     @abstractmethod
