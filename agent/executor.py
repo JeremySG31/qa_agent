@@ -6,6 +6,7 @@ Detecta el navegador predeterminado del sistema.
 
 import time
 import platform
+import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -95,41 +96,38 @@ def _build_driver(headless: bool = True, incognito: bool = False):
                 import shutil
                 options = ChromeOptions()
                 
-                # Configuración de Headless y Anti-Bot
+                # Ubicaciones comunes de Chrome en Windows
+                chrome_paths = [
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+                ]
+                for p in chrome_paths:
+                    if os.path.exists(p):
+                        options.binary_location = p
+                        break
+
                 if headless or is_linux: 
                     options.add_argument("--headless=new")
-                    options.add_argument("--no-sandbox")
-                    options.add_argument("--disable-dev-shm-usage")
-                    options.add_argument("--disable-gpu")
                 
-                options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
-                options.add_experimental_option("excludeSwitches", ["enable-automation"])
-                options.add_experimental_option('useAutomationExtension', False)
+                options.add_argument("--disable-infobars")
+                options.add_argument("--disable-extensions")
+                options.add_argument("--disable-notifications")
+                options.add_argument("--disable-popup-blocking")
+                options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--no-sandbox")
                 
                 options.add_argument("--log-level=3")
                 options.add_argument("--window-size=1920,1080")
-                if incognito:
-                    options.add_argument("--incognito")
-                
-                chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
-                if chromium_path: options.binary_location = chromium_path
-
-                chromedriver_path = shutil.which("chromedriver") or shutil.which("chromium-chromedriver")
                 
                 try:
-                    if chromedriver_path:
-                        service = ChromeService(executable_path=chromedriver_path)
-                        driver = webdriver.Chrome(service=service, options=options)
-                    else:
-                        driver = webdriver.Chrome(options=options)
-                    
-                    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-                        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-                    })
-                    _safe_print(f"Navegador: Google Chrome (Standard Stealth)")
+                    # Intentar iniciar Chrome con un timeout agresivo
+                    driver = webdriver.Chrome(options=options)
+                    driver.set_page_load_timeout(20)
+                    driver.implicitly_wait(5)
+                    _safe_print(f"   [OK] Navegador Chrome iniciado con éxito")
                     return driver
                 except Exception as e:
-                    errors.append(f"Chrome: {e}")
+                    errors.append(f"Chrome Local: {e}")
 
             elif browser == "edge":
                 options = EdgeOptions()
