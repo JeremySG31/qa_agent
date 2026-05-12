@@ -104,8 +104,8 @@ st.markdown("""
 }
 @keyframes qa-nuclear-fadein { to { visibility: visible; } }
 
-/* Ocultar errores técnicos de hidratación */
-.stException, [data-testid="stNotification"], .stAlert, [data-testid="stWidgetLabel"] + div:empty { 
+/* Ocultar solo errores técnicos de hidratación (NO alertas de usuario) */
+.stException, [data-testid="stWidgetLabel"] + div:empty { 
     display: none !important; 
 }
 
