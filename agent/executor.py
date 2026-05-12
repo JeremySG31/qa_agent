@@ -80,8 +80,16 @@ def _build_driver(headless: bool = True, incognito: bool = False):
     """
     is_linux = platform.system() == "Linux"
     
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0"
+    ]
+    ua = random.choice(user_agents)
+
     # 1. Intentar Undetected Chrome (La única forma de saltar CAPTCHAs)
-    _safe_print("   [1/2] Iniciando motor de sigilo (Anti-CAPTCHA)...")
+    _safe_print(f"   [1/2] Iniciando motor de sigilo (Identidad: {ua[:30]}...)")
     try:
         import undetected_chromedriver as uc
         options = uc.ChromeOptions()
@@ -90,10 +98,11 @@ def _build_driver(headless: bool = True, incognito: bool = False):
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
         
+        options.add_argument(f"--user-agent={ua}")
+        
         if incognito:
             options.add_argument("--incognito")
         
-        # version_main=None ayuda a que uc busque la versión correcta automáticamente
         driver = uc.Chrome(options=options, version_main=None)
         driver.set_page_load_timeout(30)
         _safe_print("   [OK] Navegador: Chrome (Sigilo Activado)")
@@ -101,7 +110,7 @@ def _build_driver(headless: bool = True, incognito: bool = False):
     except Exception as e:
         _safe_print(f"   [!] Modo sigilo falló: {e}. Usando modo estándar...")
 
-    # 2. Fallback a Selenium estándar (Si lo anterior falla)
+    # 2. Fallback a Selenium estándar
     _safe_print("   [2/2] Iniciando motor estándar...")
     default = _get_default_browser()
     browsers_to_try = [default]
@@ -137,12 +146,24 @@ def _build_driver(headless: bool = True, incognito: bool = False):
 
 def _check_for_blocks(driver):
     """Verifica si la página actual es un CAPTCHA o bloqueo."""
-    page_source = driver.page_source.lower()
-    page_title = driver.title.lower()
-    if "captcha" in page_source or "unusual traffic" in page_source or "not a robot" in page_source:
-        return True, "🚫 BLOQUEO DETECTADO: Google ha solicitado resolver un CAPTCHA. Sugerencia: Usa DuckDuckGo para este test."
-    if "blocked" in page_title or "access denied" in page_title:
-        return True, f"🚫 ACCESO DENEGADO: El sitio ha bloqueado la conexión. (Título: {driver.title})"
+    try:
+        page_source = driver.page_source.lower()
+        page_title = driver.title.lower()
+        
+        # Detección específica para DuckDuckGo y otros
+        bot_markers = [
+            "captcha", "unusual traffic", "not a robot", 
+            "made by a human", "verify you are a human",
+            "automated access", "completa el siguiente desafío"
+        ]
+        
+        if any(marker in page_source for marker in bot_markers):
+            return True, "🚫 BLOQUEO DETECTADO: El sitio ha lanzado un CAPTCHA o desafío anti-bot. Por favor, espera unos minutos o cambia el término de búsqueda."
+            
+        if "blocked" in page_title or "access denied" in page_title:
+            return True, f"🚫 ACCESO DENEGADO: El sitio ha bloqueado la conexión. (Título: {driver.title})"
+    except:
+        pass
     return False, ""
 
 
