@@ -236,7 +236,18 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
             element = None
             last_err = None
             
+            # Diccionario de traducción automática para términos comunes de QA
+            translation_map = {
+                "imágenes": "images", "images": "imágenes",
+                "videos": "videos", "noticias": "news", "news": "noticias",
+                "mapas": "maps", "maps": "mapas",
+                "configuración": "settings", "settings": "configuración",
+                "buscar": "search", "search": "buscar",
+                "entrar": "login", "login": "entrar", "iniciar sesión": "login"
+            }
+            
             for current_sel in selectors_list:
+                # ... (lógica anterior de By)
                 by_strategy = By.CSS_SELECTOR
                 clean_selector = current_sel
                 
@@ -249,11 +260,21 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 
                 try:
                     element = wait.until(EC.element_to_be_clickable((by_strategy, clean_selector)))
-                    selector = current_sel # Guardamos el que funcionó
                     break
                 except TimeoutException as te:
                     last_err = te
-                    # Búsqueda de Último Recurso para este selector individual
+                    # Si es un link y está en nuestro mapa, intentamos la traducción automáticamente
+                    if by_strategy == By.PARTIAL_LINK_TEXT:
+                        term = clean_selector.lower().strip()
+                        if term in translation_map:
+                            try:
+                                translated = translation_map[term]
+                                element = wait.until(EC.element_to_be_clickable((by_strategy, translated)))
+                                _safe_print(f"   [AutoTranslate] Encontrado via traducción: '{translated}'")
+                                break
+                            except: pass
+                    
+                    # Búsqueda de Último Recurso
                     if by_strategy == By.CSS_SELECTOR and len(clean_selector) < 50:
                         try:
                             smart_xpath = f"//*[text()='{clean_selector}' or contains(text(), '{clean_selector}') or @placeholder='{clean_selector}' or @aria-label='{clean_selector}']"
