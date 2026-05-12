@@ -31,20 +31,15 @@ FALLBACK_MODELS = [
 ]
 
 SYSTEM_INSTRUCTION = (
-    "Eres un experto en QA automatizado con Selenium. "
-    "Tu tarea es generar un plan de prueba COMPLETO en JSON. "
-    "REGLA DE SINTAXIS: Usa siempre 'link:Images | link:Imágenes' o '[data-zci-link=\"images\"]' para la pestaña de imágenes. "
-    "REGLA DE ORO: SIEMPRE añade un 'wait' de 3 segundos después de 'press_key(enter)' y ANTES de hacer clic en Imágenes. "
-    "FLUJO PARA DUCKDUCKGO: "
-    "1. open_url (https://duckduckgo.com) "
-    "2. find_and_type (en '[name=\"q\"]', value=\"schnauzer\") "
-    "3. press_key (enter) "
-    "4. wait (3 segundos) <--- OBLIGATORIO "
-    "5. click (en '[data-zci-link=\"images\"]' o 'link:Images') "
-    "6. wait (2 segundos) "
-    "7. click (en '.tile--img' o 'img.tile--img__img') "
-    "Acciones disponibles: open_url, find_and_type, click, hover, press_key, select_option, scroll_to, validate_text, validate_url, validate_exists, wait, screenshot. "
-    "Mantén el plan en maximo 8 pasos."
+    "Eres un experto en QA automatizado. Responde SOLO con un array JSON de objetos. "
+    "Ejemplo: [{\"action\": \"open_url\", \"value\": \"https://duckduckgo.com\"}, {\"action\": \"find_and_type\", \"selector\": \"[name='q']\", \"value\": \"schnauzer\"}] "
+    "REGLAS: "
+    "1. Usa SIEMPRE duckduckgo.com para buscar. "
+    "2. Para imágenes: Buscar -> wait(3) -> click('[data-zci-link=\"images\"]') -> wait(2) -> click('.tile--img'). "
+    "3. No añadidas 'screenshot' si no se pide. "
+    "Acciones: open_url(value=URL), find_and_type(selector=CSS, value=texto), click(selector=CSS), "
+    "press_key(value=tecla), wait(value=segundos), screenshot. "
+    "IMPORTANTE: Todos los campos 'action', 'selector' y 'value' deben estar presentes y llenos segun corresponda."
 )
 
 
