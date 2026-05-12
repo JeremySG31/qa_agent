@@ -1011,7 +1011,7 @@ user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local
 
 
 if "invitado_" in user_email:
-    st.warning("ℹ️ Estás en **Modo Invitado**. Los resultados son temporales (máx 10 tests/24h) y las ejecuciones tienen un **límite de 7 pasos**. Inicia sesión para historial ilimitado y pruebas complejas.")
+    st.warning("🛡️ Estás en **Modo Invitado**. Los resultados son temporales (máx 10 tests/24h) y las ejecuciones tienen un **límite de 8 pasos**. Inicia sesión para historial ilimitado y pruebas complejas.")
 
 
 
@@ -1456,7 +1456,7 @@ with tab_builder:
 
         run_custom = st.button("🚀 Ejecutar Prueba", type="primary", use_container_width=True)
         if "invitado_" in st.session_state.get("user_email", ""):
-            st.caption("⚠️ Máximo 7 pasos en modo invitado")
+            st.caption("🔒 Máximo 8 pasos en modo invitado")
 
         
 
@@ -1550,8 +1550,8 @@ with tab_builder:
 
             user_email_check = st.session_state.get("user_email", "invitado@qa-agent.local")
 
-            if "invitado_" in user_email_check and len(st.session_state.custom_steps) > 7:
-                st.error("🚀 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 7 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
+            if "invitado_" in user_email_check and len(st.session_state.custom_steps) > 8:
+                st.error("🚀 **Límite de Invitado:** Tu test tiene demasiados pasos. Los invitados solo pueden ejecutar hasta 8 pasos por prueba. Por favor, elimina pasos o inicia sesión para pruebas ilimitadas.")
                 st.stop()
 
             with st.status("Ejecutando: " + name, expanded=True) as live_status:
