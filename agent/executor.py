@@ -289,19 +289,27 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                     continue
             
             if not element:
-                # ── FALLBACK DE EMERGENCIA PARA BUSCADORES ──────────────────
-                if "duckduckgo.com" in driver.current_url and ("images" in driver.current_url or "ia=images" in driver.current_url):
-                    for fallback in [".tile--img", "img.tile--img__img", "[data-testid='tile-img']", ".tile"]:
+                # ── FALLBACK DE EMERGENCIA AGRESIVO ────────────────────────
+                is_ddg_images = "duckduckgo.com" in driver.current_url and ("images" in driver.current_url or "ia=" in driver.current_url)
+                if is_ddg_images:
+                    _safe_print("   [Emergency] Buscando cualquier resultado de imagen...")
+                    # Buscar cualquier link que contenga una imagen o tenga clase de tile
+                    for fallback in [".tile--img", "img.tile--img__img", "a[data-zci-link='images']", ".tile", "img"]:
                         try:
-                            element = driver.find_element(By.CSS_SELECTOR, fallback)
-                            _safe_print(f"   [ContextFallback] Usando selector de emergencia: {fallback}")
-                            break
+                            elements = driver.find_elements(By.CSS_SELECTOR, fallback)
+                            for el in elements:
+                                if el.is_displayed():
+                                    element = el
+                                    _safe_print(f"   [ContextFallback] Éxito con: {fallback}")
+                                    break
+                            if element: break
                         except: continue
                 
                 if not element:
                     err_type = type(last_err).__name__
                     err_msg = str(last_err).split('\n')[0] or "Sin detalle"
-                    raise Exception(f"Falla total en {selectors_list}. Error: {err_type}: {err_msg}")
+                    curr_url = driver.current_url
+                    raise Exception(f"Falla total en {selectors_list} en URL: {curr_url}. Error: {err_type}: {err_msg}")
             
             if action == "click":
                 try: driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
