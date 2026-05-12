@@ -1378,20 +1378,35 @@ with tab_builder:
                 {"header": "🗑️ PAPELERA (Arrastra aquí para borrar)", "items": []}
             ]
             
-            results = sort_items(columns, direction="vertical", multi_containers=True, custom_style=custom_style)
+            # Usamos una clave dinámica para forzar la actualización si es necesario
+            if "sort_version" not in st.session_state:
+                st.session_state.sort_version = 0
+                
+            results = sort_items(
+                columns, 
+                direction="vertical", 
+                multi_containers=True, 
+                custom_style=custom_style,
+                key=f"sort_v{st.session_state.sort_version}"
+            )
             
             if results:
                 new_display_list = results[0].get("items", [])
                 trash_list = results[1].get("items", [])
                 
-                # Sincronizar estado si hay cambios
-                if new_display_list != display_list or trash_list:
+                # Sincronizar estado SOLO si hay cambios reales detectados por el componente
+                if new_display_list != display_list or (trash_list and len(trash_list) > 0):
                     new_steps = [display_to_step[k] for k in new_display_list if k in display_to_step]
                     st.session_state.custom_steps = new_steps
+                    
+                    # Incrementar versión para forzar al componente a limpiarse y sincronizarse
+                    st.session_state.sort_version += 1
+                    
                     if trash_list: 
                         st.toast(f"🗑️ Eliminado(s) {len(trash_list)} paso(s)")
-                    # No llamamos a st.rerun() aquí porque sort_items ya dispara un rerun al cambiar el valor
-                    # Esto evita el error React #185 (Maximum update depth exceeded)
+                    
+                    # Forzar el rerun del fragmento para que el cambio sea instantáneo en la UI
+                    st.rerun(scope="fragment")
 
         render_sortable_steps()
 
