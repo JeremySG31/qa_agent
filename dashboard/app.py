@@ -16,19 +16,20 @@ st.set_page_config(
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-import agent.planner
+# Cargar variables de entorno ANTES de importar modulos del agente
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+except ImportError:
+    pass
+
+from agent.planner import generate_test_plan
 from agent.reporter import load_all_results, clear_results, save_result
 from streamlit_sortables import sort_items
 
 @st.cache_data(ttl=300)
 def get_cached_results(user_id):
     return load_all_results(user_id)
-
-try:
-    from dotenv import load_dotenv
-    load_dotenv(ROOT / ".env")
-except ImportError:
-    pass
 # --- ESTRATEGIA DE CIERRE DE SIDEBAR EN MÓVIL ---
 if "sidebar_init_mobile" not in st.session_state:
     st.session_state["sidebar_init_mobile"] = True
@@ -1134,7 +1135,7 @@ with tab_builder:
             with st.spinner("Generando pasos con IA..."):
 
                 try:
-                    new_steps = agent.planner.generate_test_plan(ai_full_prompt)
+                    new_steps = generate_test_plan(ai_full_prompt)
                     
                     # Asegurar IDs ├║nicos para drag and drop
                     for s in new_steps:
