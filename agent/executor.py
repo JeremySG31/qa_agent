@@ -287,14 +287,15 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                     continue
             
             if not element:
-                # Si fallaron todos, lanzamos el último error con más detalle
+                # Si fallaron todos, lanzamos el último error con más detalle y la lista de lo que se intentó
                 err_msg = str(last_err).split('\n')[0]
-                raise Exception(f"Falla en todos los selectores. Último error: {err_msg}")
+                raise Exception(f"Falla en todos los selectores {selectors_list}. Último error: {err_msg}")
             
             if action == "click":
-                # Intentar scroll antes de click para asegurar visibilidad
+                # Intentar scroll antes de click para asegurar visibilidad y carga (clave para imágenes)
                 try: driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
                 except: pass
+                time.sleep(0.3) # Pequeña pausa tras scroll
                 element.click()
                 result["detail"] = f"Hizo clic en '{selector}'"
             elif action == "find_and_type":
