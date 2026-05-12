@@ -8,6 +8,12 @@ import os
 import json
 import re
 import requests
+from pathlib import Path
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent / ".env")
+except ImportError:
+    pass
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 
@@ -128,16 +134,25 @@ def _call_model(model: str, prompt: str) -> str:
         raise ValueError("Respuesta vacía del modelo")
 
     _safe_print(f"[OpenRouter:{model}] Tokens usados: {data.get('usage', {})}")
+    if not content:
+        _safe_print(f"[planner] Error: El modelo retornó una respuesta vacía.")
+    else:
+        _safe_print(f"[planner] Respuesta cruda (primeros 100 carac): {content[:100]}...")
     return content
 
 
 def _plan_with_openrouter(prompt: str) -> list[dict]:
     """Llama a OpenRouter con fallback automático entre modelos gratuitos."""
+    global OPENROUTER_API_KEY
+    if not OPENROUTER_API_KEY:
+        OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+
     if not OPENROUTER_API_KEY:
         raise ValueError("OPENROUTER_API_KEY no configurada en el servidor.")
 
     models_to_try = [OPENROUTER_MODEL] + FALLBACK_MODELS
     last_error = None
+    _safe_print(f"[planner] Intentando generar plan para: {prompt[:50]}...")
 
     for model in models_to_try:
         try:
@@ -154,10 +169,16 @@ def _plan_with_openrouter(prompt: str) -> list[dict]:
 def generate_test_plan(prompt: str, **kwargs) -> list[dict]:
     """
     Punto de entrada principal.
-    Usa OpenRouter (server-side) con fallback local si falla.
+    Usa OpenRouter (server-side) con fallback local si falla por red/IA.
+    Propaga errores de configuración (API Key).
     """
     try:
         return _plan_with_openrouter(prompt)
+    except ValueError as ve:
+        # Si es un error de configuración o parsing crítico, lo propagamos
+        if "API_KEY" in str(ve) or "JSON" in str(ve):
+            raise ve
+        return _fallback_plan(prompt)
     except Exception:
         return _fallback_plan(prompt)
 
