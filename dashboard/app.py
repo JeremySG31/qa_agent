@@ -1349,17 +1349,49 @@ with tab_builder:
             }
             """
             st.caption("🖱️ Arrastra para reordenar o a la Papelera para borrar.")
-            columns = [{"header": "📋 ORDEN DE EJECUCIÓN", "items": display_list}, {"header": "🗑️ PAPELERA", "items": []}]
+            
+            # CSS para apilar verticalmente y mejorar el diseño
+            custom_style += """
+            /* Forzar disposición vertical de los contenedores */
+            [data-testid="stSortable"] > div, 
+            .st-sortable-containers-wrapper,
+            div:has(> .sortable-container) {
+                flex-direction: column !important;
+                display: flex !important;
+            }
+            .sortable-container { 
+                width: 100% !important; 
+                margin-bottom: 15px !important;
+            }
+            .sortable-container:nth-child(2) {
+                border: 1px dashed #ef444466 !important;
+                background: rgba(239, 68, 68, 0.05) !important;
+            }
+            .sortable-container:nth-child(2) .sortable-container-header {
+                background-color: #450a0a !important;
+                color: #ef4444 !important;
+            }
+            """
+            
+            columns = [
+                {"header": "📋 ORDEN DE EJECUCIÓN", "items": display_list}, 
+                {"header": "🗑️ PAPELERA (Arrastra aquí para borrar)", "items": []}
+            ]
+            
             results = sort_items(columns, direction="vertical", multi_containers=True, custom_style=custom_style)
             
-            new_display_list = results[0].get("items", [])
-            trash_list = results[1].get("items", [])
-            new_steps = [display_to_step[k] for k in new_display_list if k in display_to_step]
-            
-            if len(new_steps) != len(custom_steps) or new_display_list != display_list:
-                st.session_state.custom_steps = new_steps
-                if trash_list: st.toast(f"🗑️ Eliminado(s) {len(trash_list)} paso(s)")
-                st.rerun(scope="fragment")
+            if results:
+                new_display_list = results[0].get("items", [])
+                trash_list = results[1].get("items", [])
+                
+                # Sincronizar estado si hay cambios
+                if new_display_list != display_list or trash_list:
+                    new_steps = [display_to_step[k] for k in new_display_list if k in display_to_step]
+                    st.session_state.custom_steps = new_steps
+                    if trash_list: 
+                        st.toast(f"🗑️ Eliminado(s) {len(trash_list)} paso(s)")
+                    # No llamamos a st.rerun() aquí porque sort_items ya dispara un rerun al cambiar el valor
+                    # Esto evita el error React #185 (Maximum update depth exceeded)
 
         render_sortable_steps()
 
