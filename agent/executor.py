@@ -191,12 +191,7 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 
     result = {"action": action, "selector": selector, "value": value}
 
-    # ── Verificación de Bloqueos (Anti-Bot) ──────────────────────────────
-    blocked, block_msg = _check_for_blocks(driver)
-    if blocked:
-        result["status"] = "error"
-        result["detail"] = block_msg
-        return result
+    result = {"action": action, "selector": selector, "value": value}
 
     try:
         # ── Acciones de Correo y Dominio ────────────────────────────────────
@@ -230,6 +225,14 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
             if not value.startswith("http://") and not value.startswith("https://") and not value.startswith("data:"):
                 value = "https://" + value
             driver.get(value)
+            
+            # Verificar si cargó un CAPTCHA o bloqueo tras abrir
+            blocked, block_msg = _check_for_blocks(driver)
+            if blocked:
+                result["status"] = "error"
+                result["detail"] = block_msg
+                return result
+                
             result["status"] = "ok"
             result["detail"] = f"Abrio: {value}"
 
