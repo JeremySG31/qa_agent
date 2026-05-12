@@ -92,12 +92,18 @@ def _build_driver(headless: bool = True, incognito: bool = False):
                 options = ChromeOptions()
                 is_linux = platform.system() == "Linux"
                 
-                # Configuración de Headless
+                # Configuración de Headless y Anti-Bot
                 if headless or is_linux: 
                     options.add_argument("--headless=new")
                     options.add_argument("--no-sandbox")
                     options.add_argument("--disable-dev-shm-usage")
                     options.add_argument("--disable-gpu")
+                
+                # Intentar parecer más humano
+                options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                options.add_experimental_option('useAutomationExtension', False)
+                
                 options.add_argument("--log-level=3")
                 options.add_argument("--window-size=1920,1080")
                 if incognito:
@@ -115,12 +121,19 @@ def _build_driver(headless: bool = True, incognito: bool = False):
                     if chromedriver_path:
                         service = ChromeService(executable_path=chromedriver_path)
                         driver = webdriver.Chrome(service=service, options=options)
+                        # Desactivar webdriver flag vía script
+                        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+                        })
                         _safe_print("Navegador: Google Chrome / Chromium (System Driver)")
                         return driver
                     
                     # 2. Intentar Selenium Manager nativo (Selenium >= 4.6)
                     try:
                         driver = webdriver.Chrome(options=options)
+                        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+                        })
                         _safe_print("Navegador: Google Chrome (Selenium Manager)")
                         return driver
                     except Exception as inner_e:
@@ -144,13 +157,15 @@ def _build_driver(headless: bool = True, incognito: bool = False):
                     options.add_argument("--no-sandbox")
                     options.add_argument("--disable-dev-shm-usage")
                     options.add_argument("--disable-gpu")
+                
+                options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0")
                 options.add_argument("--log-level=3")
                 options.add_argument("--window-size=1920,1080")
                 if incognito:
                     options.add_argument("-inPrivate")
                 
                 try:
-                    # 1. Intentar Selenium Manager nativo primero (evita errores de red de webdriver-manager)
+                    # 1. Intentar Selenium Manager nativo primero
                     try:
                         driver = webdriver.Edge(options=options)
                         _safe_print("Navegador: Microsoft Edge (Selenium Manager)")
