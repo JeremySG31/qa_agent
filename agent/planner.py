@@ -154,7 +154,10 @@ def _plan_with_openrouter(prompt: str) -> list[dict]:
 def generate_test_plan(prompt: str, **kwargs) -> list[dict]:
     """
     Punto de entrada principal.
-    Usa OpenRouter (server-side) siempre. Los kwargs se ignoran por compatibilidad.
+    Usa OpenRouter (server-side) con fallback local si falla.
     """
-    return _plan_with_openrouter(prompt)
+    try:
+        return _plan_with_openrouter(prompt)
+    except Exception:
+        return _fallback_plan(prompt)
 

@@ -373,7 +373,7 @@ def firebase_error_message(raw_error):
         "TOO_MANY_ATTEMPTS_TRY_LATER": "Demasiados intentos. Intenta mas tarde.",
 
         "USER_DISABLED": "Esta cuenta ha sido deshabilitada.",
-        "INVALID_EMAIL": "El correo electrónico no es v├ílido.",
+        "INVALID_EMAIL": "El correo electrónico no es válido.",
 
     }
 
@@ -801,7 +801,7 @@ if st.session_state.get("_email_to_remove"):
 
 # --- Perfil de Usuario ---
 
-@st.dialog("­ƒæñ Mi Perfil")
+@st.dialog("👤 Mi Perfil")
 
 def show_profile():
 
@@ -824,7 +824,7 @@ def show_profile():
 
 
 
-@st.dialog("ÔÜá´©Å ┬┐Eliminar historial?")
+@st.dialog("⚠️ ¿Eliminar historial?")
 
 def confirm_clear_history():
 
@@ -834,7 +834,7 @@ def confirm_clear_history():
 
     with c1:
 
-        if st.button("S├¡, eliminar todo", use_container_width=True, type="primary"):
+        if st.button("Sí, eliminar todo", use_container_width=True, type="primary"):
 
             u_email = st.session_state.get("user_email", "invitado@qa-agent.local")
 
@@ -1086,7 +1086,7 @@ user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local
 
 
 if "invitado_" in user_email:
-    st.warning("­ƒòÁ´©Å Est├ís en **Modo Invitado**. Los resultados son temporales (m├íx 10 tests/24h) y las ejecuciones tienen un **l├¡mite de 7 pasos**. Inicia sesión para historial ilimitado y pruebas complejas.")
+    st.warning("ℹ️ Estás en **Modo Invitado**. Los resultados son temporales (máx 10 tests/24h) y las ejecuciones tienen un **límite de 7 pasos**. Inicia sesión para historial ilimitado y pruebas complejas.")
 
 
 
@@ -1208,7 +1208,7 @@ with tab_builder:
         max_generations = 3 if is_guest else 10
         
         if st.session_state.ai_generations_count >= max_generations:
-            st.error(f"­ƒøæ **L├¡mite Alcanzado:** Has alcanzado el l├¡mite de {max_generations} generaciones con IA para esta sesión. Intenta crear los pasos manualmente para no gastar los tokens.")
+            st.error(f"🔴 **Límite Alcanzado:** Has alcanzado el límite de {max_generations} generaciones con IA para esta sesión. Intenta crear los pasos manualmente para no gastar los tokens.")
         elif ai_full_prompt.strip():
 
             with st.spinner("Generando pasos con IA..."):
@@ -1415,7 +1415,7 @@ with tab_builder:
                 if "id" not in s: s["id"] = str(uuid.uuid4())[:8]
                 act, val, sel = s.get("action",""), s.get("value",""), s.get("selector","")
                 detail = val if val else sel
-                display_text = f"Ôá┐ {i+1}. [{act.upper()}] {detail}"
+                display_text = f"➡ {i+1}. [{act.upper()}] {detail}"
                 key = f"{display_text}" + (" " * 50) + f"\u200b{s['id']}"
                 display_list.append(key)
                 display_to_step[key] = s

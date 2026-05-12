@@ -191,8 +191,6 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
     try:
         # ── Acciones de Correo y Dominio ────────────────────────────────────
         if action == "generate_email":
-            if not SecureEmailManager:
-                raise Exception("Librería domain_manager no encontrada.")
             mgr = SecureEmailManager()
             email = mgr.create_account(prefix=value if value else None)
             context["email"] = email
@@ -201,8 +199,6 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
             result["email"] = email
 
         elif action == "wait_for_email":
-            if not SecureEmailManager:
-                raise Exception("Librería domain_manager no encontrada.")
             email_addr = value or context.get("email")
             if not email_addr:
                 raise Exception("No se especificó dirección de correo ni hay una generada.")
