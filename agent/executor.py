@@ -296,28 +296,29 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                     raise Exception(f"Falla total en {selectors_list} en URL: {curr_url}. Error: {err_type}: {err_msg}")
             
             if action == "click":
-                # ── Inteligencia de Navegación para DuckDuckGo ────────────────
-                is_nav_click = "images" in selector.lower() or "imágenes" in selector.lower()
-                old_url = driver.current_url
-
+                # ── Inteligencia de Navegación Reforzada ──────────────────────
+                is_nav_click = "images" in selector.lower() or "imágenes" in selector.lower() or "zci-link" in selector.lower()
+                
                 try: driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
                 except: pass
                 time.sleep(0.3)
                 
-                try:
-                    element.click()
-                except Exception:
-                    driver.execute_script("arguments[0].click();", element)
-                
-                # Si es un click de navegación, esperar y verificar cambio de URL
+                # Para navegación, priorizamos JS Click que es más fiable en SPAs
                 if is_nav_click:
-                    time.sleep(1.5)
-                    if "ia=images" not in driver.current_url:
-                        _safe_print("   [Fix] El clic no navegó. Reintentando con selector técnico...")
-                        try:
-                            tech_el = driver.find_element(By.CSS_SELECTOR, "a[data-zci-link='images']")
-                            driver.execute_script("arguments[0].click();", tech_el)
-                        except: pass
+                    _safe_print(f"   [Nav] Ejecutando clic de navegación en: {selector}")
+                    driver.execute_script("arguments[0].click();", element)
+                    
+                    # Verificación con reintento (máximo 2 veces más)
+                    for _ in range(2):
+                        time.sleep(2)
+                        if "ia=images" in driver.current_url: break
+                        _safe_print("   [Fix] Reintentando clic de navegación...")
+                        driver.execute_script("arguments[0].click();", element)
+                else:
+                    try:
+                        element.click()
+                    except Exception:
+                        driver.execute_script("arguments[0].click();", element)
                 
                 result["detail"] = f"Hizo clic en '{selector}'"
             elif action == "find_and_type":

@@ -31,15 +31,17 @@ FALLBACK_MODELS = [
 ]
 
 SYSTEM_INSTRUCTION = (
-    "Eres un experto en QA automatizado. Responde SOLO con un array JSON de objetos. "
-    "Ejemplo: [{\"action\": \"open_url\", \"value\": \"https://duckduckgo.com\"}, {\"action\": \"find_and_type\", \"selector\": \"[name='q']\", \"value\": \"schnauzer\"}] "
-    "REGLAS: "
-    "1. Usa SIEMPRE duckduckgo.com para buscar. "
-    "2. Para imágenes: Buscar -> wait(3) -> click('[data-zci-link=\"images\"]') -> wait(2) -> click('.tile--img'). "
-    "3. No añadidas 'screenshot' si no se pide. "
-    "Acciones: open_url(value=URL), find_and_type(selector=CSS, value=texto), click(selector=CSS), "
-    "press_key(value=tecla), wait(value=segundos), screenshot. "
-    "IMPORTANTE: Todos los campos 'action', 'selector' y 'value' deben estar presentes y llenos segun corresponda."
+    "Eres un experto en QA. Responde SOLO con un array JSON. "
+    "FLUJO OBLIGATORIO PARA BUSCAR: "
+    "1. open_url('https://duckduckgo.com') "
+    "2. find_and_type(selector=\"[name='q']\", value=\"termino\") "
+    "3. press_key(value=\"enter\") <--- PROHIBIDO SALTAR ESTE PASO "
+    "4. wait(3) "
+    "5. click('[data-zci-link=\"images\"]') "
+    "6. wait(2) "
+    "7. click('.tile--img') "
+    "Acciones: open_url, find_and_type, click, press_key, wait, screenshot. "
+    "Ejemplo: [{\"action\": \"open_url\", \"value\": \"...\"}, {\"action\": \"find_and_type\", \"selector\": \"...\", \"value\": \"...\"}, {\"action\": \"press_key\", \"value\": \"enter\"}]"
 )
 
 
