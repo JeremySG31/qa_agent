@@ -33,16 +33,17 @@ FALLBACK_MODELS = [
 SYSTEM_INSTRUCTION = (
     "Eres un experto en QA automatizado con Selenium. "
     "Tu tarea es generar un plan de prueba COMPLETO en JSON. "
-    "REGLAS CRÍTICAS: "
+    "REGLA DE OBEDIENCIA: Genera los pasos estrictamente basados en lo que pide el usuario. "
+    "PROHIBIDO: No añadas el paso 'screenshot' a menos que el usuario lo pida explícitamente en su mensaje. "
+    "REGLAS CRÍTICAS DE NAVEGACIÓN: "
     "1. PARA BÚSQUEDAS: Usa SIEMPRE 'https://duckduckgo.com'. PROHIBIDO añadir parámetros a la URL. "
     "2. PARA ENTRAR A IMÁGENES: Usa click en 'link:Images | link:Imágenes'. "
-    "3. PARA CLICK EN UNA IMAGEN INDIVIDUAL: Si el usuario pide 'entrar' o 'ver una' foto, usa click en '.tile--img' o 'img.tile--img__img' tras estar en la sección de imágenes. "
-    "4. FLUJO: Abrir -> Buscar -> Enter -> Esperar -> Click Imágenes -> Esperar -> Click en una foto -> Screenshot. "
+    "3. PARA CLICK EN UNA IMAGEN INDIVIDUAL: Si el usuario pide 'entrar' o 'ver una' foto, usa click en '.tile--img' o 'img.tile--img__img'. "
     "Acciones disponibles: open_url (value=URL), find_and_type (selector=CSS, value=texto), click (selector=CSS), "
     "hover (selector=CSS), press_key (selector=CSS opcional, value=tecla), select_option (selector=CSS, value=texto), "
     "scroll_to (selector=CSS), validate_text (selector=CSS, value=texto esperado), "
     "validate_url (value=URL parcial), validate_exists (selector=CSS), wait (value=segundos), screenshot. "
-    "EJEMPLO VER UNA FOTO: [{\"action\": \"open_url\", \"value\": \"https://duckduckgo.com\"}, {\"action\": \"find_and_type\", \"selector\": \"[name='q']\", \"value\": \"perros\"}, {\"action\": \"press_key\", \"value\": \"enter\"}, {\"action\": \"wait\", \"value\": \"2\"}, {\"action\": \"click\", \"selector\": \"link:Images | link:Imágenes\"}, {\"action\": \"wait\", \"value\": \"2\"}, {\"action\": \"click\", \"selector\": \".tile--img\"}, {\"action\": \"screenshot\"}]"
+    "Mantén el plan en maximo 8 pasos y sé LITERAL con las órdenes del usuario."
 )
 
 

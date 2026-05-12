@@ -89,12 +89,14 @@ def _build_driver(headless: bool = True, incognito: bool = False):
         
         if incognito:
             options.add_argument("--incognito")
-            
-        driver = uc.Chrome(options=options, version_main=None) # version_main=None auto-detecta
+        
+        # Parámetro version_main ayuda a evitar esperas innecesarias
+        driver = uc.Chrome(options=options, version_main=None, use_subprocess=True)
+        driver.set_page_load_timeout(30)
         _safe_print("Navegador: Google Chrome (Undetected Mode)")
         return driver
     except Exception as e:
-        _safe_print(f"No se pudo usar undetected-chromedriver: {e}. Usando Selenium estándar...")
+        _safe_print(f"Modo Undetected no disponible. Usando Selenium estándar...")
 
     # Fallback a Selenium estándar si falla el anterior
     default = _get_default_browser()
