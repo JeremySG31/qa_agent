@@ -287,12 +287,21 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                     continue
             
             if not element:
-                # Si fallaron todos, lanzamos el último error con más detalle y la lista de lo que se intentó
-                err_msg = str(last_err).split('\n')[0]
-                raise Exception(f"Falla en todos los selectores {selectors_list}. Último error: {err_msg}")
+                # ── FALLBACK DE EMERGENCIA PARA BUSCADORES ──────────────────
+                if "duckduckgo.com" in driver.current_url and ("images" in driver.current_url or "ia=images" in driver.current_url):
+                    for fallback in [".tile--img", "img.tile--img__img", "[data-testid='tile-img']", ".tile"]:
+                        try:
+                            element = driver.find_element(By.CSS_SELECTOR, fallback)
+                            _safe_print(f"   [ContextFallback] Usando selector de emergencia: {fallback}")
+                            break
+                        except: continue
+                
+                if not element:
+                    err_type = type(last_err).__name__
+                    err_msg = str(last_err).split('\n')[0] or "Sin detalle"
+                    raise Exception(f"Falla total en {selectors_list}. Error: {err_type}: {err_msg}")
             
             if action == "click":
-                # Intentar scroll antes de click para asegurar visibilidad y carga (clave para imágenes)
                 try: driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
                 except: pass
                 time.sleep(0.3)
@@ -300,7 +309,7 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                 try:
                     element.click()
                 except Exception:
-                    # FALLBACK: Clic via JavaScript si el clic normal falla (ej: por popups o overlays)
+                    # Forzar clic por JS si el normal falla
                     driver.execute_script("arguments[0].click();", element)
                 
                 result["detail"] = f"Hizo clic en '{selector}'"
