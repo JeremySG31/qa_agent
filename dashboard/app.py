@@ -1134,7 +1134,6 @@ with tab_builder:
             with st.spinner("Generando pasos con IA..."):
 
                 try:
-                    importlib.reload(agent.planner)
                     new_steps = agent.planner.generate_test_plan(ai_full_prompt)
                     
                     # Asegurar IDs ├║nicos para drag and drop
@@ -1486,8 +1485,6 @@ with tab_builder:
         else:
 
             from agent import executor
-
-            importlib.reload(executor)
 
             from datetime import timezone, timedelta
 
