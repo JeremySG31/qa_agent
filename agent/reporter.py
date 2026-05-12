@@ -4,7 +4,6 @@ import sys
 import io
 import requests
 from datetime import datetime
-from pathlib import Path
 
 # Forzar stdout a UTF-8 para evitar errores de codificacion en Windows
 if sys.stdout and hasattr(sys.stdout, 'buffer'):

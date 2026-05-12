@@ -1,4 +1,3 @@
-import base64
 import os
 
 # Frase secreta para el cifrado (puedes cambiarla en Secrets si quieres)

@@ -1,7 +1,6 @@
-import sys, os, json, subprocess, re, importlib, uuid
+import sys, os, json, subprocess, re, importlib, uuid, base64, requests
 from pathlib import Path
 from datetime import datetime
-from urllib.parse import quote
 import streamlit as st
 import streamlit.components.v1 as components
 import platform
@@ -19,8 +18,6 @@ sys.path.insert(0, str(ROOT))
 
 import agent.planner
 from agent.reporter import load_all_results, clear_results, save_result
-from agent.planner  import generate_test_plan
-from agent.crypto   import encrypt_data, decrypt_data
 from streamlit_sortables import sort_items
 
 @st.cache_data(ttl=300)
@@ -35,6 +32,9 @@ except ImportError:
 # --- ESTRATEGIA DE CIERRE DE SIDEBAR EN MÓVIL ---
 if "sidebar_init_mobile" not in st.session_state:
     st.session_state["sidebar_init_mobile"] = True
+
+REQUIRES_SEL = {"find_and_type","click","hover","scroll_to","select_option","validate_text","validate_exists"}
+REQUIRES_VAL = {"open_url","find_and_type","select_option","validate_text","validate_url","wait"}
 
 # Script inyectado al inicio para asegurar colapso en móvil
 components.html("""
@@ -338,14 +338,22 @@ FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "qa-agent-web").strip()
 
 
 
-def firebase_headers():
-
-    token = st.session_state.get("firebase_id_token", "")
-
-    return {"Authorization": f"Bearer {token}"} if token else {}
 
 
 
+
+
+
+def is_valid_email(email_str):
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    if not re.match(pattern, email_str):
+        return False, "El formato del correo es inválido."
+    blocked_words = ["admin", "root", "put", "mierda", "caca", "pene", "test", "fuck", "bitch", "shit", "ass", "cochinada"]
+    email_lower = email_str.lower()
+    for word in blocked_words:
+        if word in email_lower:
+            return False, "El correo contiene términos no permitidos o reservados."
+    return True, ""
 
 
 def firebase_error_message(raw_error):
@@ -384,8 +392,6 @@ def firebase_error_message(raw_error):
 
 
 def firebase_request(method, url, **kwargs):
-
-    import requests
 
     try:
 
@@ -465,9 +471,7 @@ def firebase_register(email, password):
 
 
 
-def firebase_load_settings(email):
-    # Ya no se cargan configuraciones de IA por usuario (usamos IA Incluida)
-    return {"provider": "IA Incluida (OpenRouter)", "model": "openai/gpt-oss-120b:free"}
+
 
 
 
@@ -477,9 +481,7 @@ def firebase_load_settings(email):
 
 
 
-# Se elimina la recarga de llaves personales ya que se usa IA centralizada
-if st.session_state.pop("_needs_key_reload", False):
-    pass
+
 
 
 
@@ -629,34 +631,6 @@ if not st.session_state.user_logged_in:
 
             if submitted_reg:
 
-                import re
-
-                
-
-                def is_valid_email(email_str):
-
-                    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-
-                    if not re.match(pattern, email_str):
-
-                        return False, "El formato del correo es inválido."
-
-                    
-
-                    blocked_words = ["admin", "root", "put", "mierda", "caca", "pene", "test", "fuck", "bitch", "shit", "ass", "cochinada"]
-
-                    email_lower = email_str.lower()
-
-                    for word in blocked_words:
-
-                        if word in email_lower:
-
-                            return False, f"El correo contiene términos no permitidos o reservados."
-
-                    return True, ""
-
-                
-
                 if r_email and r_pass and r_pass == r_pass2:
 
                     is_valid, error_msg = is_valid_email(r_email)
@@ -719,8 +693,6 @@ if not st.session_state.user_logged_in:
         st.markdown("<div style='margin-top:20px; margin-bottom:10px; border-top:1px solid #1e293b; padding-top:20px;'></div>", unsafe_allow_html=True)
 
         if st.button("🚀 Probar como Invitado (Sin registro)", use_container_width=True):
-
-            import uuid
 
             st.session_state.user_logged_in = True
 
@@ -838,8 +810,6 @@ def confirm_clear_history():
 
             u_email = st.session_state.get("user_email", "invitado@qa-agent.local")
 
-            from agent.reporter import clear_results
-
             n = clear_results(user_id=u_email)
 
             get_cached_results.clear() # Limpiar cache
@@ -933,59 +903,13 @@ def render_result_card(result, idx):
 
 
 
-def render_plan_preview(steps):
-
-    if not steps:
-
-        return
-
-    st.markdown('<div class="plan-preview">', unsafe_allow_html=True)
-
-    for i, s in enumerate(steps, 1):
-
-        action = s.get("action", "")
-
-        val    = s.get("value", "")
-
-        sel    = s.get("selector", "")
-
-        detail = val if val else sel
-
-        st.markdown(f"""
-
-        <div class="plan-step">
-
-          <span class="plan-num">{i}.</span>
-
-          <span class="plan-act">[{action}]</span>
-
-          <span>{detail}</span>
-
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 
 
 
-def run_test_subprocess(prompt, headless):
 
-    """Ejecuta main.py en subproceso y retorna stdout/returncode."""
 
-    cmd = [sys.executable, str(ROOT / "main.py"), prompt]
-
-    if not headless:
-
-        cmd.append("--no-headless")
-
-    env = os.environ.copy()
-
-    env["PYTHONIOENCODING"] = "utf-8"
-
-    res = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), encoding="utf-8", env=env)
-
-    return res.returncode, res.stdout, res.stderr
 
 
 
@@ -1170,11 +1094,7 @@ tab_builder, tab_results = st.tabs([
 
 
 
-# --- Historial de Resultados ---
-
-# TAB 2 - CONSTRUCTOR VISUAL
-
-# --- Historial de Resultados ---
+# TAB 1 - CONSTRUCTOR VISUAL
 
 with tab_builder:
 
@@ -1366,9 +1286,6 @@ with tab_builder:
         elif b_action == "wait_for_email":
             b_value = st.text_input("Correo a monitorear", placeholder="Último generado si vacío", key="bv_we")
 
-        REQUIRES_SEL = {"find_and_type","click","hover","scroll_to","select_option","validate_text","validate_exists"}
-        REQUIRES_VAL = {"open_url","find_and_type","select_option","validate_text","validate_url","wait"}
-
         if st.button("Añadir paso", use_container_width=True):
             err = None
             if b_action in REQUIRES_SEL and not b_selector and b_action != "scroll_to":
@@ -1540,8 +1457,6 @@ with tab_builder:
 
                 if "screenshot" in s:
 
-                    import base64
-
                     try:
 
                         decoded = base64.b64decode(s["screenshot"])
@@ -1570,13 +1485,9 @@ with tab_builder:
 
         else:
 
-            import importlib
-
             from agent import executor
 
             importlib.reload(executor)
-
-            from agent.reporter import save_result as _save
 
             from datetime import timezone, timedelta
 
@@ -1646,8 +1557,6 @@ with tab_builder:
 
                         if "screenshot" in r:
 
-                            import base64
-
                             try:
 
                                 st.image(base64.b64decode(r["screenshot"]))
@@ -1702,7 +1611,7 @@ with tab_builder:
 
 
 
-                _save({
+                save_result({
 
                     "test_name": name,
 
@@ -1734,29 +1643,15 @@ with tab_builder:
 
                 st.rerun()
 
-# --- Historial de Resultados ---
-
-# --- Historial de Resultados ---
-
-# --- Historial de Resultados ---
-
 with tab_results:
 
     st.markdown('<div class="section-title">📊 Historial de resultados</div>', unsafe_allow_html=True)
 
 
 
-    user_email = st.session_state.get("user_email", "invitado_default@qa-agent.local")
-
-    results = get_cached_results(user_id=user_email)
-
-    total = len(results)  # Calcular total ANTES de usarlo
-
-
-
     if not results:
 
-        st.info("🔍 No hay resultados aún. Ejecuta tu primer test en la pestaña **Ejecutar Test**.")
+        st.info("🔍 No hay resultados aún. Ejecuta tu primer test en la pestaña **Constructor de Pruebas**.")
 
     else:
 

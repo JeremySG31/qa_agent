@@ -6,7 +6,6 @@ Detecta el navegador predeterminado del sistema.
 
 import time
 import platform
-from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -30,7 +29,6 @@ except ImportError:
 try:
     from selenium.webdriver.chrome.service import Service as ChromeService
     from webdriver_manager.chrome import ChromeDriverManager
-    from webdriver_manager.core.os_manager import ChromeType
     CHROME_MANAGER_AVAILABLE = True
 except ImportError:
     CHROME_MANAGER_AVAILABLE = False
@@ -266,7 +264,10 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                 element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
                 driver.execute_script("arguments[0].scrollIntoView({behavior:'smooth',block:'center'});", element)
             else:
-                pixels = int(value) if value else 500
+                try:
+                    pixels = int(value) if value else 500
+                except (ValueError, TypeError):
+                    pixels = 500
                 driver.execute_script(f"window.scrollBy(0, {pixels});")
             time.sleep(0.4)
             result["status"] = "ok"

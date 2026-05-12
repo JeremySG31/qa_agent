@@ -2,9 +2,8 @@ import requests
 import random
 import string
 import time
-import os
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional
+from typing import Optional
 
 class DomainRegistrar(ABC):
     """Interfaz base para proveedores de registro de dominios."""
