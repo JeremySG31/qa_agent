@@ -74,10 +74,29 @@ def _get_default_browser():
 
 def _build_driver(headless: bool = True, incognito: bool = False):
     """
-    Inicializa el driver (Chrome o Edge).
-    Si headless=True, ejecuta sin ventana visible.
-    Si incognito=True, inicia el navegador en modo privado.
+    Inicializa el driver. Prioriza undetected_chromedriver para evitar bloqueos.
     """
+    is_linux = platform.system() == "Linux"
+    
+    # Intentar usar undetected-chromedriver (La mejor opción anti-detección)
+    try:
+        import undetected_chromedriver as uc
+        options = uc.ChromeOptions()
+        if headless or is_linux:
+            options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+        
+        if incognito:
+            options.add_argument("--incognito")
+            
+        driver = uc.Chrome(options=options, version_main=None) # version_main=None auto-detecta
+        _safe_print("Navegador: Google Chrome (Undetected Mode)")
+        return driver
+    except Exception as e:
+        _safe_print(f"No se pudo usar undetected-chromedriver: {e}. Usando Selenium estándar...")
+
+    # Fallback a Selenium estándar si falla el anterior
     default = _get_default_browser()
     browsers_to_try = [default]
     for b in ["chrome", "edge"]:
@@ -90,7 +109,6 @@ def _build_driver(headless: bool = True, incognito: bool = False):
             if browser == "chrome":
                 import shutil
                 options = ChromeOptions()
-                is_linux = platform.system() == "Linux"
                 
                 # Configuración de Headless y Anti-Bot
                 if headless or is_linux: 
@@ -99,7 +117,6 @@ def _build_driver(headless: bool = True, incognito: bool = False):
                     options.add_argument("--disable-dev-shm-usage")
                     options.add_argument("--disable-gpu")
                 
-                # Intentar parecer más humano
                 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
                 options.add_experimental_option("excludeSwitches", ["enable-automation"])
                 options.add_experimental_option('useAutomationExtension', False)
@@ -109,83 +126,52 @@ def _build_driver(headless: bool = True, incognito: bool = False):
                 if incognito:
                     options.add_argument("--incognito")
                 
-                # Intentar detectar Chromium en Linux/Streamlit Cloud
                 chromium_path = shutil.which("chromium") or shutil.which("chromium-browser")
-                if chromium_path:
-                    options.binary_location = chromium_path
+                if chromium_path: options.binary_location = chromium_path
 
                 chromedriver_path = shutil.which("chromedriver") or shutil.which("chromium-chromedriver")
                 
                 try:
-                    # 1. Intentar usar el driver del sistema si se encontró (ideal para Streamlit Cloud)
                     if chromedriver_path:
                         service = ChromeService(executable_path=chromedriver_path)
                         driver = webdriver.Chrome(service=service, options=options)
-                        # Desactivar webdriver flag vía script
-                        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-                            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-                        })
-                        _safe_print("Navegador: Google Chrome / Chromium (System Driver)")
-                        return driver
-                    
-                    # 2. Intentar Selenium Manager nativo (Selenium >= 4.6)
-                    try:
+                    else:
                         driver = webdriver.Chrome(options=options)
-                        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-                            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-                        })
-                        _safe_print("Navegador: Google Chrome (Selenium Manager)")
-                        return driver
-                    except Exception as inner_e:
-                        # 3. Fallback a webdriver-manager si falla lo anterior
-                        if CHROME_MANAGER_AVAILABLE:
-                            service = ChromeService(ChromeDriverManager().install())
-                            driver = webdriver.Chrome(service=service, options=options)
-                            _safe_print("Navegador: Google Chrome (Webdriver Manager)")
-                            return driver
-                        raise inner_e
+                    
+                    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+                    })
+                    _safe_print(f"Navegador: Google Chrome (Standard Stealth)")
+                    return driver
                 except Exception as e:
-                    _safe_print(f"Fallo Chrome: {e}")
                     errors.append(f"Chrome: {e}")
 
             elif browser == "edge":
                 options = EdgeOptions()
-                is_linux = platform.system() == "Linux"
-                
                 if headless or is_linux: 
                     options.add_argument("--headless=new")
-                    options.add_argument("--no-sandbox")
-                    options.add_argument("--disable-dev-shm-usage")
-                    options.add_argument("--disable-gpu")
-                
                 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0")
-                options.add_argument("--log-level=3")
-                options.add_argument("--window-size=1920,1080")
-                if incognito:
-                    options.add_argument("-inPrivate")
                 
                 try:
-                    # 1. Intentar Selenium Manager nativo primero
-                    try:
-                        driver = webdriver.Edge(options=options)
-                        _safe_print("Navegador: Microsoft Edge (Selenium Manager)")
-                        return driver
-                    except Exception as inner_e:
-                        # 2. Fallback a webdriver-manager
-                        if EDGE_MANAGER_AVAILABLE:
-                            service = EdgeService(EdgeChromiumDriverManager().install())
-                            driver = webdriver.Edge(service=service, options=options)
-                            _safe_print("Navegador: Microsoft Edge (Webdriver Manager)")
-                            return driver
-                        raise inner_e
+                    driver = webdriver.Edge(options=options)
+                    return driver
                 except Exception as e:
-                    _safe_print(f"Fallo Edge: {e}")
                     errors.append(f"Edge: {e}")
         except Exception as e:
-            _safe_print(f"No se pudo iniciar {browser}: {e}")
             errors.append(f"{browser}: {e}")
 
     raise Exception(f"No se pudo iniciar navegador. Errores: {' | '.join(errors)}")
+
+
+def _check_for_blocks(driver):
+    """Verifica si la página actual es un CAPTCHA o bloqueo."""
+    page_source = driver.page_source.lower()
+    page_title = driver.title.lower()
+    if "captcha" in page_source or "unusual traffic" in page_source or "not a robot" in page_source:
+        return True, "🚫 BLOQUEO DETECTADO: Google ha solicitado resolver un CAPTCHA. Sugerencia: Usa DuckDuckGo para este test."
+    if "blocked" in page_title or "access denied" in page_title:
+        return True, f"🚫 ACCESO DENEGADO: El sitio ha bloqueado la conexión. (Título: {driver.title})"
+    return False, ""
 
 
 def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: bool = False) -> dict:
@@ -200,6 +186,13 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
             value = value.replace(f"{{{{{k}}}}}", str(v))
 
     result = {"action": action, "selector": selector, "value": value}
+
+    # ── Verificación de Bloqueos (Anti-Bot) ──────────────────────────────
+    blocked, block_msg = _check_for_blocks(driver)
+    if blocked:
+        result["status"] = "error"
+        result["detail"] = block_msg
+        return result
 
     try:
         # ── Acciones de Correo y Dominio ────────────────────────────────────
@@ -229,7 +222,7 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                 result["detail"] = "Timeout esperando correo."
 
         # ── Acciones de navegación ──────────────────────────────────────────
-        if action == "open_url":
+        elif action == "open_url":
             if not value.startswith("http://") and not value.startswith("https://") and not value.startswith("data:"):
                 value = "https://" + value
             driver.get(value)
