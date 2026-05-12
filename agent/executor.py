@@ -231,43 +231,39 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 
         # ── Interacción con elementos ───────────────────────────────────────
         elif action in ("click", "find_and_type", "select_option"):
-            by_strategy = By.CSS_SELECTOR
-            clean_selector = selector
+            # Soporte para selectores múltiples (ej: "link:Imágenes | link:Images")
+            selectors_list = [s.strip() for s in selector.split("|")]
+            element = None
+            last_err = None
             
-            if selector.startswith("link:"):
-                by_strategy = By.PARTIAL_LINK_TEXT
-                clean_selector = selector[5:]
-            elif selector.startswith("xpath:"):
-                by_strategy = By.XPATH
-                clean_selector = selector[6:]
+            for current_sel in selectors_list:
+                by_strategy = By.CSS_SELECTOR
+                clean_selector = current_sel
+                
+                if current_sel.startswith("link:"):
+                    by_strategy = By.PARTIAL_LINK_TEXT
+                    clean_selector = current_sel[5:]
+                elif current_sel.startswith("xpath:"):
+                    by_strategy = By.XPATH
+                    clean_selector = current_sel[6:]
 
-            try:
-                element = wait.until(EC.element_to_be_clickable((by_strategy, clean_selector)))
-            except TimeoutException as te:
-                # ── Búsqueda de Último Recurso (Super-Resiliencia) ──────────
-                # Si falla el selector original y es un selector simple (sin link: ni xpath:),
-                # intentamos buscar por texto, placeholder o aria-label.
-                if by_strategy == By.CSS_SELECTOR and len(clean_selector) < 50:
-                    try:
-                        # Intentamos XPath flexible: texto exacto, parcial, placeholder o label
-                        smart_xpath = (
-                            f"//*[text()='{clean_selector}' or contains(text(), '{clean_selector}') or "
-                            f"@placeholder='{clean_selector}' or contains(@placeholder, '{clean_selector}') or "
-                            f"@aria-label='{clean_selector}' or contains(@aria-label, '{clean_selector}') or "
-                            f"@value='{clean_selector}']"
-                        )
-                        element = wait.until(EC.element_to_be_clickable((By.XPATH, smart_xpath)))
-                        _safe_print(f"   [SmartSearch] Elemento encontrado vía texto/label: '{clean_selector}'")
-                    except:
-                        # Fallback específico para buscadores si todo lo anterior falla
-                        if "[name='q']" in selector or "input[name=q]" in selector:
-                            try:
-                                element = wait.until(EC.element_to_be_clickable((By.NAME, "q")))
-                            except: raise te
-                        else:
-                            raise te
-                else:
-                    raise te
+                try:
+                    element = wait.until(EC.element_to_be_clickable((by_strategy, clean_selector)))
+                    selector = current_sel # Guardamos el que funcionó
+                    break
+                except TimeoutException as te:
+                    last_err = te
+                    # Búsqueda de Último Recurso para este selector individual
+                    if by_strategy == By.CSS_SELECTOR and len(clean_selector) < 50:
+                        try:
+                            smart_xpath = f"//*[text()='{clean_selector}' or contains(text(), '{clean_selector}') or @placeholder='{clean_selector}' or @aria-label='{clean_selector}']"
+                            element = wait.until(EC.element_to_be_clickable((By.XPATH, smart_xpath)))
+                            break
+                        except: continue
+                    continue
+            
+            if not element:
+                raise last_err or TimeoutException(f"Ninguno de los selectores funcionó: {selectors_list}")
             
             if action == "click":
                 # Intentar scroll antes de click para asegurar visibilidad
