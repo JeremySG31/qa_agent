@@ -295,8 +295,14 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                 # Intentar scroll antes de click para asegurar visibilidad y carga (clave para imágenes)
                 try: driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
                 except: pass
-                time.sleep(0.3) # Pequeña pausa tras scroll
-                element.click()
+                time.sleep(0.3)
+                
+                try:
+                    element.click()
+                except Exception:
+                    # FALLBACK: Clic via JavaScript si el clic normal falla (ej: por popups o overlays)
+                    driver.execute_script("arguments[0].click();", element)
+                
                 result["detail"] = f"Hizo clic en '{selector}'"
             elif action == "find_and_type":
                 element.clear()
