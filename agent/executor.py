@@ -260,9 +260,11 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
 
                 try:
                     element = wait.until(EC.element_to_be_clickable((by_strategy, clean_selector)))
+                    # Si funciona, guardamos este selector como el exitoso
+                    result["selector"] = current_sel
                     break
-                except TimeoutException as te:
-                    last_err = te
+                except Exception as e:
+                    last_err = e
                     # Si es un link y está en nuestro mapa, intentamos la traducción automáticamente
                     if by_strategy == By.PARTIAL_LINK_TEXT:
                         term = clean_selector.lower().strip()
@@ -270,21 +272,24 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                             try:
                                 translated = translation_map[term]
                                 element = wait.until(EC.element_to_be_clickable((by_strategy, translated)))
-                                _safe_print(f"   [AutoTranslate] Encontrado via traducción: '{translated}'")
+                                result["selector"] = f"{current_sel} (via {translated})"
                                 break
                             except: pass
                     
-                    # Búsqueda de Último Recurso
+                    # Búsqueda de Último Recurso (Solo si es CSS y falló el normal)
                     if by_strategy == By.CSS_SELECTOR and len(clean_selector) < 50:
                         try:
                             smart_xpath = f"//*[text()='{clean_selector}' or contains(text(), '{clean_selector}') or @placeholder='{clean_selector}' or @aria-label='{clean_selector}']"
                             element = wait.until(EC.element_to_be_clickable((By.XPATH, smart_xpath)))
+                            result["selector"] = f"{current_sel} (SmartSearch)"
                             break
                         except: continue
                     continue
             
             if not element:
-                raise last_err or TimeoutException(f"Ninguno de los selectores funcionó: {selectors_list}")
+                # Si fallaron todos, lanzamos el último error con más detalle
+                err_msg = str(last_err).split('\n')[0]
+                raise Exception(f"Falla en todos los selectores. Último error: {err_msg}")
             
             if action == "click":
                 # Intentar scroll antes de click para asegurar visibilidad
