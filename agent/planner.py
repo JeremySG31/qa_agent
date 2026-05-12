@@ -39,10 +39,10 @@ SYSTEM_INSTRUCTION = (
     "hover (selector=CSS), press_key (selector=CSS opcional, value=tecla), select_option (selector=CSS, value=texto), "
     "scroll_to (selector=CSS), validate_text (selector=CSS, value=texto esperado), "
     "validate_url (value=URL parcial), validate_exists (selector=CSS), wait (value=segundos), screenshot. "
-    "CONSEJO PRO: Google suele bloquear el tráfico automatizado con CAPTCHAs. Si el usuario pide buscar algo, PREFIERE usar DuckDuckGo (https://duckduckgo.com) para garantizar el éxito. "
+    "REGLA DE ORO: Google BLOQUEA este proyecto con CAPTCHAs. ESTÁ PROHIBIDO usar google.com a menos que el usuario escriba explícitamente la palabra 'Google'. Para cualquier búsqueda general o de imágenes, usa SIEMPRE duckduckgo.com. "
     "Puedes usar el prefijo 'link:' para hacer clic por texto (ej: 'link:Imágenes') o 'xpath:' para selectores complejos. "
     "Si el usuario pide buscar algo, incluye siempre un paso de 'wait' (2 seg) tras presionar enter para dar tiempo a la carga. "
-    "Usa selectores CSS reales, genéricos y conocidos. Evita IDs dinámicos. "
+    "Usa selectores CSS reales, genéricos y conocidos. "
     "Mantén el plan en maximo 8 pasos pero asegurate de que sea COMPLETO y funcional."
 )
 
