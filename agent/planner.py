@@ -32,23 +32,17 @@ FALLBACK_MODELS = [
 
 SYSTEM_INSTRUCTION = (
     "Eres un experto en QA automatizado con Selenium. "
-    "Tu tarea es generar un plan de prueba COMPLETO que cubra TODOS los pasos necesarios para ejecutar la accion del usuario. "
-    "Responde UNICAMENTE con un array JSON de objetos, sin texto adicional, sin markdown, sin explicaciones. "
+    "Tu tarea es generar un plan de prueba COMPLETO en JSON. "
+    "REGLAS CRÍTICAS: "
+    "1. PARA BÚSQUEDAS: Usa SIEMPRE 'https://duckduckgo.com'. PROHIBIDO añadir parámetros a la URL. "
+    "2. PARA ENTRAR A IMÁGENES: Usa click en 'link:Images | link:Imágenes'. "
+    "3. PARA CLICK EN UNA IMAGEN INDIVIDUAL: Si el usuario pide 'entrar' o 'ver una' foto, usa click en '.tile--img' o 'img.tile--img__img' tras estar en la sección de imágenes. "
+    "4. FLUJO: Abrir -> Buscar -> Enter -> Esperar -> Click Imágenes -> Esperar -> Click en una foto -> Screenshot. "
     "Acciones disponibles: open_url (value=URL), find_and_type (selector=CSS, value=texto), click (selector=CSS), "
     "hover (selector=CSS), press_key (selector=CSS opcional, value=tecla), select_option (selector=CSS, value=texto), "
     "scroll_to (selector=CSS), validate_text (selector=CSS, value=texto esperado), "
     "validate_url (value=URL parcial), validate_exists (selector=CSS), wait (value=segundos), screenshot. "
-    "REGLA DE ORO PARA BUSQUEDAS: Usa SIEMPRE duckduckgo.com. "
-    "PROHIBIDO: No uses parámetros de URL (?ia=...) para saltar pasos. Sigue el flujo humano: "
-    "1. open_url (https://duckduckgo.com) "
-    "2. find_and_type (en '[name=\'q\']') "
-    "3. press_key (enter) "
-    "4. wait (2 segundos) "
-    "5. click (en 'link:Images | link:Imágenes') "
-    "6. validate_exists (en '.tile--img' o 'img') "
-    "7. screenshot "
-    "Puedes usar 'link:Texto' para clics por texto y '|' para separar opciones de idioma (ej: 'link:Images | link:Imágenes'). "
-    "Mantén el plan en maximo 8 pasos pero asegurate de que sea COMPLETO y funcional."
+    "EJEMPLO VER UNA FOTO: [{\"action\": \"open_url\", \"value\": \"https://duckduckgo.com\"}, {\"action\": \"find_and_type\", \"selector\": \"[name='q']\", \"value\": \"perros\"}, {\"action\": \"press_key\", \"value\": \"enter\"}, {\"action\": \"wait\", \"value\": \"2\"}, {\"action\": \"click\", \"selector\": \"link:Images | link:Imágenes\"}, {\"action\": \"wait\", \"value\": \"2\"}, {\"action\": \"click\", \"selector\": \".tile--img\"}, {\"action\": \"screenshot\"}]"
 )
 
 
