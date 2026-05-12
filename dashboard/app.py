@@ -1252,11 +1252,8 @@ with tab_builder:
 
 
         elif b_action == "scroll_to":
-
             b_selector = st.text_input("Selector CSS del elemento destino", placeholder="#footer, .section-2", key="bs_sc")
-
             if not b_selector:
-
                 b_value = st.text_input("O pixels a bajar (si no hay selector)", placeholder="500", key="bv_sc")
 
         elif b_action == "select_option":
@@ -1284,14 +1281,14 @@ with tab_builder:
             b_value = st.text_input("Prefijo opcional", placeholder="Aleatorio si queda vacio", key="bv_ge")
 
         elif b_action == "wait_for_email":
-            b_value = st.text_input("Correo a monitorear", placeholder="Último generado si vacío", key="bv_we")
+            b_value = st.text_input("Correo a monitorear", placeholder="Ultimo generado si vacio", key="bv_we")
 
-        if st.button("Añadir paso", use_container_width=True):
+        if st.button("Anadir paso", use_container_width=True):
             err = None
             if b_action in REQUIRES_SEL and not b_selector and b_action != "scroll_to":
-                err = "Selector CSS requerido para esta acción."
+                err = "Selector CSS requerido para esta accion."
             elif b_action in REQUIRES_VAL and not b_value and b_action not in ("scroll_to",):
-                err = "Valor requerido para esta acción."
+                err = "Valor requerido para esta accion."
             
             if err: st.error(err)
             else:
@@ -1300,11 +1297,11 @@ with tab_builder:
                 st.rerun()
 
         st.markdown("---")
-        
+
     with col_b2:
         st.markdown('<div id="steps-section"></div>', unsafe_allow_html=True)
         st.markdown("**Pasos del test**")
-        
+
         if st.session_state.get("_scroll_to_steps"):
             st.session_state.pop("_scroll_to_steps")
             components.html("""
@@ -1312,7 +1309,7 @@ with tab_builder:
                 window.parent.document.getElementById('steps-section').scrollIntoView({behavior: 'smooth'});
                 </script>
             """, height=0)
-        
+
         @st.fragment
         def render_sortable_steps():
             custom_steps = st.session_state.custom_steps
@@ -1321,7 +1318,7 @@ with tab_builder:
                     '<div style="background:#0f172a;border:1px dashed #334155;border-radius:10px;'
                     'padding:30px;text-align:center;color:#475569;">'
                     '<div style="font-size:2rem;margin-bottom:8px">+</div>'
-                    '<div>No hay pasos aún. Añade acciones o genéralas con IA.</div>'
+                    '<div>No hay pasos aun. Anade acciones o generalas con IA.</div>'
                     '</div>',
                     unsafe_allow_html=True)
                 return
@@ -1330,35 +1327,58 @@ with tab_builder:
             display_list = []
             for i, s in enumerate(custom_steps):
                 if "id" not in s: s["id"] = str(uuid.uuid4())[:8]
-                act, val, sel = s.get("action",""), s.get("value",""), s.get("selector","")
+                act = s.get("action", "")
+                val = s.get("value", "")
+                sel = s.get("selector", "")
                 detail = val if val else sel
-                display_text = f"➡ {i+1}. [{act.upper()}] {detail}"
-                key = f"{display_text}" + (" " * 50) + f"\u200b{s['id']}"
+                key = f"{i+1}. [{act.upper()}] {detail[:40]} | {s['id']}"
                 display_list.append(key)
                 display_to_step[key] = s
 
             custom_style = """
-            .sortable-container { background-color: #0d0f14 !important; border: 1px solid #1e293b !important; border-radius: 12px !important; margin-bottom: 20px !important; }
-            .sortable-container-header { background-color: #1e293b !important; color: #22d3ee !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 1px !important; font-size: 0.85rem !important; padding: 10px !important; border-bottom: 1px solid #334155 !important; }
-            .sortable-container-body { background-color: #0d0f14 !important; max-height: 380px !important; overflow-y: auto !important; padding: 10px !important; }
-            .sortable-item { background: linear-gradient(90deg, #1e293b, #0f172a) !important; border: 1px solid #38bdf844 !important; border-radius: 8px !important; color: #e2e8f0 !important; padding: 12px 16px !important; margin-bottom: 8px !important; font-family: 'JetBrains Mono', monospace !important; font-size: 0.82rem !important; box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+            .sortable-container { background-color: #0d0f14 !important; border: 1px solid #1e293b !important; border-radius: 12px !important; margin-bottom: 12px !important; }
+            .sortable-container-header { display: none !important; }
+            .sortable-container-body { background-color: #0d0f14 !important; max-height: 400px !important; overflow-y: auto !important; padding: 10px !important; }
+            .sortable-item { background: linear-gradient(90deg, #1e293b, #0f172a) !important; border: 1px solid #38bdf844 !important; border-radius: 8px !important; color: #e2e8f0 !important; padding: 12px 16px !important; margin-bottom: 8px !important; font-family: 'JetBrains Mono', monospace !important; font-size: 0.82rem !important; box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; cursor: grab !important; }
             .sortable-item:hover { border-color: #22d3ee !important; background: #1e293b !important; }
             @media (max-width: 768px) {
-                .sortable-container-header { font-size: 0.75rem !important; padding: 8px !important; }
                 .sortable-item { font-size: 0.75rem !important; padding: 8px 10px !important; }
             }
             """
-            st.caption("🖱️ Arrastra para reordenar o a la Papelera para borrar.")
-            columns = [{"header": "📋 ORDEN DE EJECUCIÓN", "items": display_list}, {"header": "🗑️ PAPELERA", "items": []}]
-            results = sort_items(columns, direction="vertical", multi_containers=True, custom_style=custom_style)
-            
-            new_display_list = results[0].get("items", [])
-            trash_list = results[1].get("items", [])
-            new_steps = [display_to_step[k] for k in new_display_list if k in display_to_step]
-            
-            if len(new_steps) != len(custom_steps) or new_display_list != display_list:
-                st.session_state.custom_steps = new_steps
-                if trash_list: st.toast(f"🗑️ Eliminado(s) {len(trash_list)} paso(s)")
+
+            st.caption("Arrastra para reordenar los pasos.")
+            sorted_items = sort_items(display_list, direction="vertical", custom_style=custom_style)
+
+            if sorted_items != display_list:
+                new_steps = [display_to_step[k] for k in sorted_items if k in display_to_step]
+                if new_steps:
+                    st.session_state.custom_steps = new_steps
+                    st.rerun(scope="fragment")
+
+            # Botones de eliminacion individuales debajo
+            st.markdown(
+                '<div style="color:#94a3b8;font-weight:600;font-size:.78rem;text-transform:uppercase;'
+                'letter-spacing:1px;margin:12px 0 8px;">Eliminar pasos</div>',
+                unsafe_allow_html=True)
+
+            cols_per_row = 4
+            step_ids_to_delete = []
+            rows = [custom_steps[i:i+cols_per_row] for i in range(0, len(custom_steps), cols_per_row)]
+            for row_idx, row in enumerate(rows):
+                cols = st.columns(len(row))
+                for col, s in zip(cols, row):
+                    act = s.get("action", "")
+                    sid = s.get("id", "?")
+                    with col:
+                        if st.button(f"x {act}", key=f"del_{sid}", use_container_width=True):
+                            step_ids_to_delete.append(sid)
+
+            if step_ids_to_delete:
+                st.session_state.custom_steps = [
+                    s for s in st.session_state.custom_steps
+                    if s.get("id") not in step_ids_to_delete
+                ]
+                st.toast(f"Eliminado(s) {len(step_ids_to_delete)} paso(s)")
                 st.rerun(scope="fragment")
 
         render_sortable_steps()
@@ -1375,9 +1395,6 @@ with tab_builder:
                         st.rerun()
                     else: st.error("Debe ser una lista.")
                 except Exception as e: st.error(f"Error: {e}")
-
-
-
 
 
     st.markdown("---")
