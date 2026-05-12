@@ -296,6 +296,10 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                     raise Exception(f"Falla total en {selectors_list} en URL: {curr_url}. Error: {err_type}: {err_msg}")
             
             if action == "click":
+                # ── Inteligencia de Navegación para DuckDuckGo ────────────────
+                is_nav_click = "images" in selector.lower() or "imágenes" in selector.lower()
+                old_url = driver.current_url
+
                 try: driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
                 except: pass
                 time.sleep(0.3)
@@ -303,8 +307,17 @@ def _execute_step(driver, step: dict, wait, context: dict, screenshot_on_fail: b
                 try:
                     element.click()
                 except Exception:
-                    # Forzar clic por JS si el normal falla
                     driver.execute_script("arguments[0].click();", element)
+                
+                # Si es un click de navegación, esperar y verificar cambio de URL
+                if is_nav_click:
+                    time.sleep(1.5)
+                    if "ia=images" not in driver.current_url:
+                        _safe_print("   [Fix] El clic no navegó. Reintentando con selector técnico...")
+                        try:
+                            tech_el = driver.find_element(By.CSS_SELECTOR, "a[data-zci-link='images']")
+                            driver.execute_script("arguments[0].click();", tech_el)
+                        except: pass
                 
                 result["detail"] = f"Hizo clic en '{selector}'"
             elif action == "find_and_type":
